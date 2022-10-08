@@ -35,10 +35,10 @@ To show information about any script, execute ```<SCRIPT_NAME>.py --help```
 
 <img src="readme_photos/cmd_help.jpg" alt="cmd_help_img" width="250"/>
 
-This script show a list that contains all other scripts,
+This script shows a list that contains all other scripts,
 and let you select which one you want to use to display its help.
-So this is the only command you need to **memorize**.
-To use it just execute:
+So, this is the only command you need to **memorize**.
+To use it, just execute:
 
 ```
 cmd_help.py
@@ -58,9 +58,9 @@ vid_compress.py --fps 25 --scale 720 --keep --rm_audio -i birds.mp4
 ```
 
 This command will take 'birds.mp4' video as an input and compress it,
-the resulting video will have 25 frames per seconds,
+the resulting video will have 25 frames per second,
 will be scaled to 720p and its audio will be removed,
-it compression will be done using the famous H.264 codec.
+its compression will be done using the famous H.264 codec.
 For more information about codecs that can be used:
 
 ```
@@ -78,14 +78,14 @@ For example:
 vid_downloader.py -t 0.00.00 0.00.02 -u https://www.youtube.com/watch?v=PCicKydX5GE
 ```
 
-This command will download the part from **0 h 00 m 00s** to **0h 00 m 02s** of this youtube [video](https://www.youtube.com/watch?v=PCicKydX5GE).
+This command will download the part from **0 h 00 m 00s** to **0h 00 m 02s** of this YouTube [video](https://www.youtube.com/watch?v=PCicKydX5GE).
 
 ## pic2vid
 
 <img src="readme_photos/pic2vid.jpg" alt="pic2vid_img" width="250"/>
 
 Search for images in the current directory and convert them to video, all images must have the same dimensions.
-the number of images shown per second is calculated using the provided duration.
+The number of images shown per second is calculated using the provided duration.
 
 For example:
 
@@ -94,36 +94,55 @@ cd my_pictures; pic2vid.py --duration 4 --extension .jpg --fps 25
 ```
 
 This command will go to directory 'my_pictures', and it will merge any '.jpg' images into one video with the duration of 4 seconds,
-and 25 frames per seconds. The number of images shown in each second depends on the number of images and the specified duration.
+and 25 frames per second. The number of images shown in each second depends on the number of images and the specified duration.
 
 
 ## simple_svg
 
 <img src="readme_photos/simple_svg.jpg" alt="simple_svg_img" width="250"/>
 
-generate simple shape in the form of SVG file.
+Generate simple shape in the form of SVG file.
 
 For example:
 
 ```
-simple_svg.py --color #00cc99 --size 600 400 --shape elliple --thickness 15
+simple_svg.py --color "#00cc99" --size 600 400 --shape elliple --thickness 15
 ```
 
-This command, will produce an SVG file with ellipse drawn in the center,
-with the color #00cc99, of the size 600x400 and a line thicknes of 15.
+This command will produce an SVG file with an ellipse drawn in the center,
+with the color #00cc99, of the size 600x400 and a line thickness of 15.
+
+This one will also produce a command that you can use with svg_animator.py to animate the shape,
+You just have to past the command using Ctrl+V and hit Enter (you need to have 'xclip' installed)
 
 ## svg_animator
 
 <img src="readme_photos/svg_animator.gif" alt="svg_animator_gif" width="250"/>
 
-Create a line animation video from a svg file, the supported shapes are: path, ellipse, circle and rect. Only the first shape presented in the file is animated.
+Create a line animation video from a SVG file, the supported shapes are: path, ellipse, circle and rect. Only the first shape presented in the file is animated.
 
+For example:
+
+```
+svg_animator.py --input ellipse.svg -c 0,204,153 -w 13 -t --num_frames 150 --fps 30
+```
+This command will take the 'ellipse.svg' file as an input.
+And it will produce a video of 5 seconds (150 number_of_frames / 30 FPS = 5 seconds).
+The color of the used line is RGB(0,204,153) and a width of 13.
 
 ## file2txt
 
 <img src="readme_photos/file2txt.jpg" alt="file2txt_img" width="250"/>
 
-Transforms files to text and vise-versa. Useful to embed images inside code for example.
+Transforms files to text and vise-versa. Useful to embed images inside code, for example.
+
+For example:
+
+```
+file2txt.py -i flower_icon.png -p
+```
+
+This will transform 'flower_icon.png' into a text that you can embed in your program.
 
 
 ## vid2gif
@@ -132,6 +151,15 @@ Transforms files to text and vise-versa. Useful to embed images inside code for 
 
 Converts videos to GIFs. Multiple optimization option are provided.
 
+For example:
+
+```
+vid2gif.py -i birds.mp3 -f 12 -s 300
+```
+
+This command will take the birds.mp3 video and transform it to a GIF with 12 frames per second,
+and an image width of 300  pixels.
+
 ## text_animator
 
 <img src="readme_photos/text_animator.gif" alt="text_animator_gif" width="250"/>
@@ -139,6 +167,17 @@ Converts videos to GIFs. Multiple optimization option are provided.
 Create a text typing animation video with a transparent background.
 The font size is calculated automatically from the text_bbox variable
 
+For example:
+
+```
+text_animator.py -i "computer can also type" --length 3 --antialiasing -c 255,0,0 --text_bbox 550 300
+```
+
+This command will produce a video with a transparent background of 3 seconds length.
+In this video, the sentence 'computer can also type' is animated.
+The color of the text will be red, and it will have the default size of 600x600 pixels.
+The script will try to fit the text in the text bounding box of 550x300 pixels,
+and it will calculate the font size automatically.
 
 ## mirror_vids
 
@@ -147,6 +186,13 @@ The font size is calculated automatically from the text_bbox variable
 Create array of video, could be horizontally or vertically or both, stacked videos are flipped.
 Useful to perform video transition animation.
 
+For example:
+
+```
+mirror_vids.py -i bird.mp3 -o bird_mirrors.mp3
+```
+
+This command will take 'bird.mp3' and produce a video of 8 copies of the initial video stacked around the initial video.
 
 # Prerequisites
 
@@ -154,8 +200,8 @@ In this section, we present multiple packages that need to be installed before r
 On Linux, you can use your command line favorite package manager.
 In our example, we will use Aptitude (```apt-get``` Ubuntu based).
 
-On Windows the best option is to use a command line package manager.
-We advise to use **scoop** from [https://scoop.sh/](https://scoop.sh/) (a good alternative to scoop is **[Chocolatey](https://chocolatey.org/install)**).
+On Windows, the best option is to use a command line package manager.
+We advise using **scoop** from [https://scoop.sh/](https://scoop.sh/) (a good alternative to scoop is **[Chocolatey](https://chocolatey.org/install)**).
 
 To install **scoop** type the following commands in PowerShell (open Explorer then ALT+F+S+R):
 
@@ -200,7 +246,7 @@ scoop install youtube-dl
 
 ## python packages
 
-Here is the list of the Python packages used in the idfferent scripts:
+Here is the list of the Python packages used in the different scripts:
 
 colorama
 svg.path
@@ -229,7 +275,7 @@ so that they can be used from anywhere in your system.
 
 * Firstly, download the GitHub repo using ```git clone``` or download and unpack the zip file.
 
-* Copy the 'Scripts' folder to your prefered directory, in our case we will put it in the home folder, use the following command:
+* Copy the 'Scripts' folder to your preferred directory, in our case we will put it in the home folder, use the following command:
 
 ```cp -r video-editing-py-script/Scripts/ ~/Scripts```
 
@@ -237,7 +283,7 @@ so that they can be used from anywhere in your system.
 
 ```cd ~/Scripts; chmod +x *.py```
 
-* Add the 'Scripts' to you Global pathes. For bash terminal, use the following cammand:
+* Add the 'Scripts' to your Global paths. For bash terminal, use the following command:
 
 ```echo 'export PATH=$PATH:"$HOME/Scripts"' >> ~/.bashrc```
 
@@ -248,4 +294,5 @@ so that they can be used from anywhere in your system.
 
 ## Make scripts global for Windows
 
-Comming soon ...
+Coming soon ...
+
