@@ -9,6 +9,7 @@ import tempfile
 import subprocess
 import shutil
 import re
+import argparse
 
 SCRIPTS = []
 HELP_MSG = ""
@@ -132,6 +133,7 @@ class Updater:
                 return
             self._replace_current_files()
 
+        self._update_bat_files_for_windows()
         new_version = self._get_version_from_file()
         print(f"successfully updated from version {init_version} to version {new_version}")
 
@@ -176,8 +178,32 @@ class Updater:
             old_script.unlink(missing_ok=True)
             child.rename(old_script)
 
+    @staticmethod
+    def _update_bat_files_for_windows():
+        if platform.system().lower() != "windows":
+            return
+        cur_file = pathlib.Path(__file__)
+        cur_scripts_folder = cur_file.parent
+        bat_files_folder = cur_scripts_folder.parent
+        cur_file_bat_launcher = bat_files_folder / (cur_file.stem + ".bat")
+        if not cur_file_bat_launcher.is_file():
+            return
+        num_py_scripts = 0
+        for py_script in cur_scripts_folder.iterdir():
+            bat_launcher = bat_files_folder / (py_script.stem + ".bat")
+            bat_launcher.unlink(missing_ok=True)
+            with bat_launcher.open("w") as f:
+                f.write(f"py {py_script} %*")
+            num_py_scripts += 1
+        print(f"updated {num_py_scripts} '.bat' script launchers, path: {bat_files_folder}")
+
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                     description='Show the list of other scripts, and let you select which one you'
+                                                 ' want to use to display its help.')
+    args = parser.parse_args()
+
     get_scripts()
     format_help_message()
     curses.wrapper(character)

@@ -36,7 +36,9 @@ To show information about any script, execute ```<SCRIPT_NAME>.py --help```
 
 This script shows a list that contains all other scripts,
 and let you select which one you want to use to display its help.
+It also allows you to update all the scripts (network needed)
 So, this is the only command you need to **memorize**.
+
 To use it, just execute:
 
 ```
