@@ -123,8 +123,9 @@ class Updater:
         self.scripts_tmp_path = None
 
     def update_all_scripts(self):
-        print(self.git_url)
+        # print(self.git_url)
         init_version = self._get_version_from_file()
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = pathlib.Path(tmp_dir)
             if not self._download_update(tmp_path):
@@ -132,7 +133,7 @@ class Updater:
             self._replace_current_files()
 
         new_version = self._get_version_from_file()
-        print(f"successfully Updated from version {init_version} to version {new_version}")
+        print(f"successfully updated from version {init_version} to version {new_version}")
 
     def _download_update(self, in_tmp_path):
 
@@ -140,7 +141,7 @@ class Updater:
             print("ERROR: could not update scripts: the command 'git' is not installed, "
                   "please install it before updating (for example: scoop install git)")
             return False
-        print("cloning repository from github ...")
+        print("cloning the repository from github ...")
         subprocess.run(["git", "clone", self.git_url], cwd=str(in_tmp_path))
 
         for child in in_tmp_path.iterdir():
@@ -160,8 +161,7 @@ class Updater:
             txt = f.read()
             v_re = r"^__version__ = ['\"]([^'\"]*)['\"]"
             version = re.search(v_re, txt, re.M)
-            if version:
-                version += version.group(1)
+            version = version.group(1)
         return version
 
     def _replace_current_files(self):
