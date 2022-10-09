@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-import curses
 import os
 import pathlib
 import platform

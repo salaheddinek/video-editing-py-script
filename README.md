@@ -19,9 +19,6 @@ but these scripts should also work on macOS because python is a system agnostic 
 - [Prerequisites](#Prerequisites)
 	+ [For Linux](#For-Linux)
 	+ [For Windows](#For-Windows)
-	+ [ffmpeg](#ffmpeg)
-	+ [youtube-dl](#youtube-dl)
-	+ [python packages](#python-packages)
 
 - [How to Install and Use](#How-to-Install-and-Use)
     + [Simple usage](#Simple-usage)
@@ -167,7 +164,11 @@ and an image width of 300  pixels.
 <img src="readme_photos/text_animator.gif" alt="text_animator_gif" width="250"/>
 
 Create a text typing animation video with a transparent background.
-The font size is calculated automatically from the text_bbox variable
+The font size is calculated automatically from the text_bbox variable.
+To use a custom font (other then 'text_animator_overpass_font'),
+provide a path to a new '.ttf' file using '--font'.
+On Linux, providing the name of the font is sufficient
+(the script will look for it from the installed fonts in the system).
 
 For example:
 
@@ -310,5 +311,8 @@ Then type 'cmd_' and hit TAB key, you should see 'cmd_help.bat',
 this is the only command that you need to **memorize**,
 as it shows you the rest of scripts.
 Remember to replace the '.py' with '.bat' to run any script. Enjoy!
+
+*Side Note*: when using PowerShell, scripts help messages (-h/--help) might miss some characters,
+use Windows CMD to verify the help message in this case.
 
 

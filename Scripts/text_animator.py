@@ -73,18 +73,19 @@ def get_font_path(font_name):  # only for linux right now
 
     # print(f"reduced: {reduced_font_name}")
     fonts_dict = {}
-    installed_fonts = subprocess.run(["fc-list"], stdout=subprocess.PIPE).stdout.decode('utf-8').split("\n")
-    for installed in installed_fonts:
-        installed_path = installed.split(":")[0].strip()
+    if shutil.which("fc-list"):
+        installed_fonts = subprocess.run(["fc-list"], stdout=subprocess.PIPE).stdout.decode('utf-8').split("\n")
+        for installed in installed_fonts:
+            installed_path = installed.split(":")[0].strip()
 
-        installed_name = pathlib.Path(installed_path).name.replace(" ", "").lower()
-        fonts_dict[installed_name] = installed_path
-        # print(installed_path)
-        if installed_name == reduced_font_name:
-            return installed_path
-    for n, p in fonts_dict.items():
-        if reduced_font_name[:-4] in n:
-            return p
+            installed_name = pathlib.Path(installed_path).name.replace(" ", "").lower()
+            fonts_dict[installed_name] = installed_path
+            # print(installed_path)
+            if installed_name == reduced_font_name:
+                return installed_path
+        for n, p in fonts_dict.items():
+            if reduced_font_name[:-4] in n:
+                return p
     alt_font_path = pathlib.Path(__file__).parent / "text_animator_overpass_font.ttf"
     if alt_font_path.is_file():
         return str(alt_font_path)
