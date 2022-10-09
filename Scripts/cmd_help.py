@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 import curses
 import os
+import platform
+import pathlib
+
 
 SCRIPTS = []
 HELP_MSG = ""
@@ -40,7 +43,10 @@ def character(stdscr):
             else:
                 attr = attributes['normal']
             stdscr.addstr("{0}. ".format(i + 1))
-            stdscr.addstr(SCRIPTS[i] + '\n', attr)
+            if isinstance(SCRIPTS[i], str):
+                stdscr.addstr(SCRIPTS[i] + '\n', attr)
+            else:
+                stdscr.addstr(SCRIPTS[i].stem + '\n', attr)
         c = stdscr.getch()
         if c == curses.KEY_UP:
             option -= 1
@@ -59,14 +65,14 @@ def character(stdscr):
 
 def get_scripts():
     global SCRIPTS
-    cur_file_name = os.path.basename(__file__)
-    scripts_path = os.path.dirname(os.path.abspath(__file__))
 
+    cur_file = pathlib.Path(__file__)
+    scripts_path = cur_file.parent
     SCRIPTS = []
-    for file in os.listdir(scripts_path):
-        if file.endswith(".py") or file.endswith(".sh") or file.endswith(".pyz"):
-            if file != cur_file_name and file != "autolock.sh":
-                SCRIPTS += [file]
+    for ext in [".py", ".sh", ".pyz"]:
+        for s_path in scripts_path.glob("*" + ext):
+            if s_path.name != cur_file.name and s_path.name != "autolock.sh":
+                SCRIPTS += [s_path]
     SCRIPTS.sort()
     SCRIPTS += [HELP_NAME, "exit"]
 
@@ -79,6 +85,9 @@ def format_help_message():
     global HELP_MSG, HEADER_MSG
     HEADER_MSG = "\nSelect the script to show its functionality.\n\n\n"
 
+    HELP_MSG = "Not implemented yet for Windows"
+    if platform.system().lower() == "windows":
+        return
     HELP_MSG = get_title("Finding files")
     HELP_MSG += "* Find file in all subdirectories: ex:'find ./ -name \"*.txt\"'\n"
     HELP_MSG += "* Find only in current directory: ex 'find ./ -maxdepth 1 -name \"*.txt\"'\n"
@@ -109,4 +118,8 @@ if __name__ == "__main__":
     elif CHOICE == len(SCRIPTS) - 1:
         print("")
     else:
-        os.system(SCRIPTS[CHOICE] + " -h")
+        if platform.system().lower() == "windows":
+            print("")
+            os.system(f"py {SCRIPTS[CHOICE]} -h")
+        else:
+            os.system(f"{SCRIPTS[CHOICE]} -h")

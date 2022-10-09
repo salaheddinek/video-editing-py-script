@@ -5,7 +5,6 @@ import subprocess
 import os
 from datetime import datetime
 import pathlib
-from colorama import Fore, Style
 
 
 URL = ""
@@ -17,7 +16,7 @@ AUDIO_ONLY = False
 ART = True
 
 
-def intro_print():
+def intro_print(in_art):
     """ Taken from https://patorjk.com/software/taag using 4MAX font"""
     intro = '''
         Yb    dP 88 8888b.  888888  dP"Yb      8888b.  Yb        dP 88b 88
@@ -25,25 +24,23 @@ def intro_print():
           YbdP   88  8I  dY 88""   Yb   dP      8I  dY   YbdPYbdP   88 Y88 .o.
            YP    88 8888Y"  888888  YbodP      8888Y"     YP  YP    88  Y8 `"'
     '''
+    if in_art:
+        print(intro)
+    print((" starting to download the video ".center(80, "=")))
+    print("")
 
-    lines = intro.split("\n")
-    mid_p = 45
-    for line in lines:
-        print(f"{Fore.BLUE}{line[3:mid_p]}{Fore.GREEN}{line[mid_p + 2:]}{Style.RESET_ALL}")
 
-
-def end_print():
+def end_print(in_art):
     end = """
                ,d8PPPP 888  ,d8   88PPP.
     ______     d88ooo  888_dPY8   88   8     ______
     XXXXXX   ,88'      8888' 88   88   8     XXXXXX
              88bdPPP   Y8P   Y8   88oop'
     """
-    lines = end.split("\n")
-    p1, p2 = 10, 45
-    for line in lines:
-        print(f"{' ' * 10}{Fore.YELLOW}{line[3:p1]}{Fore.CYAN}{line[p1:p2]}"
-              f"{Fore.YELLOW} {line[p2:]}{Style.RESET_ALL}")
+
+    print((" Video download finished ".center(80, "=")))
+    if in_art:
+        print(end)
 
 
 def get_start_and_end_time(parsed_time: str):
@@ -162,12 +159,7 @@ if __name__ == "__main__":
                         default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
-    if args.art:
-        intro_print()
-        # end_print()
-        # quit()
-    else:
-        print((" starting png gradient animation ".center(80, "=")))
+    intro_print(args.art)
 
     for program in ["ffmpeg", "youtube-dl"]:
         if shutil.which(program) is None:
@@ -217,6 +209,5 @@ if __name__ == "__main__":
         print("")
         print(("video download finished. Duration = {} ".format(pretty_time_delta(datetime.now() - exec_start_time))))
         print("")
-    if args.art:
-        end_print()
-        quit()
+
+    end_print(args.art)

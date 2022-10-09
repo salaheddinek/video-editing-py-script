@@ -5,7 +5,6 @@ import svg.path
 import xml.etree.ElementTree as Xee
 from PIL import Image, ImageDraw
 from datetime import datetime
-from colorama import Fore, Style
 import enum
 import tempfile
 import math
@@ -29,7 +28,7 @@ ART = True
 DEBUG = False
 
 
-def intro_print():
+def intro_print(in_art):
     """ Taken from https://patorjk.com/software/taag using 4MAX font"""
     intro = '''
         .dP"Y8 Yb    dP  dP""b8     Yb    dP        db        
@@ -38,24 +37,22 @@ def intro_print():
         8bodP'    YP     YboodP        YP    `"' dP""""Yb `"' 
     '''
 
-    lines = intro.split("\n")
-    mid_p = 35
-    for line in lines:
-        print(f"{Fore.MAGENTA}{line[3:mid_p]}{Fore.LIGHTRED_EX}{line[mid_p:]}{Style.RESET_ALL}")
+    if in_art:
+        print(intro)
+    print((" starting SVG animation ".center(80, "=")))
+    print("")
 
 
-def end_print():
+def end_print(in_art):
     end = """
                ,d8PPPP 888  ,d8   88PPP.
     ______     d88ooo  888_dPY8   88   8     ______
     XXXXXX   ,88'      8888' 88   88   8     XXXXXX
              88bdPPP   Y8P   Y8   88oop'
     """
-    lines = end.split("\n")
-    p1, p2 = 10, 45
-    for line in lines:
-        print(f"{' ' * 10}{Fore.YELLOW}{line[3:p1]}{Fore.CYAN}{line[p1:p2]}"
-              f"{Fore.YELLOW} {line[p2:]}{Style.RESET_ALL}")
+    print((" starting SVG animation finished ".center(80, "=")))
+    if in_art:
+        print(end)
 
 
 class TransitionMathFunction:
@@ -448,12 +445,7 @@ if __name__ == "__main__":
 
     color = tuple(parse_color(args.color))
 
-    if args.art:
-        intro_print()
-        # end_print()
-        # quit()
-    else:
-        print((" starting png gradient animation ".center(80, "=")))
+    intro_print(args.art)
 
     svg_tree = Xee.parse(str(in_file))
     root = svg_tree.getroot()
@@ -495,6 +487,4 @@ if __name__ == "__main__":
     print("")
     print("video animation creation finished. Duration = {} ".format(pretty_time_delta(datetime.now() - start_time)))
     print("")
-    if args.art:
-        end_print()
-        quit()
+    end_print(args.art)

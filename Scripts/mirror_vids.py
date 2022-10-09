@@ -5,8 +5,6 @@ import shutil
 import pathlib
 import argparse
 from datetime import datetime
-from colorama import Fore, Style
-
 
 ART = True
 FFMPEG_VERBOSE = "quiet"
@@ -16,7 +14,7 @@ STACK_BOTTOM = 1
 STACK_LEFT = 1
 
 
-def intro_print():
+def intro_print(in_art):
     """ Taken from https://patorjk.com/software/taag using 4MAX font"""
     intro = """
     Yb    dP            db    88""Yb 88""Yb    db    Yb  dP .dP"Y8 
@@ -25,24 +23,23 @@ def intro_print():
        YP    `"'     dP\"\"\"\"Yb 88  Yb 88  Yb dP\"\"\"\"Yb  dP    8bodP'  
     """
 
-    lines = intro.split("\n")
-    mid_p = 18
-    for line in lines:
-        print(f"{Fore.RED}{line[3:mid_p]}{Fore.LIGHTYELLOW_EX}{line[mid_p+2:]}{Style.RESET_ALL}")
+    if in_art:
+        print(intro)
+    print((" starting video mirrors ".center(80, "=")))
+    print("")
 
 
-def end_print():
+def end_print(in_art):
     end = """
                ,d8PPPP 888  ,d8   88PPP.            
     ______     d88ooo  888_dPY8   88   8     ______ 
     XXXXXX   ,88'      8888' 88   88   8     XXXXXX 
              88bdPPP   Y8P   Y8   88oop'               
     """
-    lines = end.split("\n")
-    p1, p2 = 10, 45
-    for line in lines:
-        print(f"{' ' * 10}{Fore.MAGENTA}{line[3:p1]}{Fore.CYAN}{line[p1:p2]}"
-              f"{Fore.MAGENTA} {line[p2:]}{Style.RESET_ALL}")
+
+    print((" video mirrors finished ".center(80, "=")))
+    if in_art:
+        print(end)
 
 
 def construct_video_array_line(raw_vid, in_right, in_left, in_tmp_dir, in_line_output, in_verbose):
@@ -160,12 +157,7 @@ if __name__ == '__main__':
 
     start_time = datetime.now()
 
-    if args.art:
-        intro_print()
-        # end_print()
-        # quit()
-    else:
-        print((" starting video arrays processing ".center(80, "=")))
+    intro_print(args.art)
 
     if top == 0 and right == 0 and bottom == 0 and left == 0:
         exit(0)
@@ -190,5 +182,4 @@ if __name__ == '__main__':
     print(("video array creation finished. Duration = {} ".format(pretty_time_delta(end_time - start_time))))
     print("")
 
-    if args.art:
-        end_print()
+    end_print(args.art)

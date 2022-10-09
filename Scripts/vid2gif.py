@@ -37,6 +37,32 @@ The methods used for converting videos to GIFs are presented bellow (all of thes
 """
 
 
+def intro_print(in_art):
+    """ Taken from https://patorjk.com/software/taag using 4MAX font"""
+    intro = """
+        Yb    dP 88 8888b.      oP"Yb.      dP""b8 88 888888 
+         Yb  dP  88  8I  Yb     "' dP'     dP   `" 88 88__   
+          YbdP   88  8I  dY       dP'      Yb  "88 88 88""   
+           YP    88 8888Y"      .d8888      YboodP 88 88    
+    """
+    if in_art:
+        print(intro)
+    print((" starting converting video(s) ".center(80, "=")))
+    print("")
+
+
+def end_print(in_art):
+    end = """
+               ,d8PPPP 888  ,d8   88PPP.            
+    ______     d88ooo  888_dPY8   88   8     ______ 
+    XXXXXX   ,88'      8888' 88   88   8     XXXXXX 
+             88bdPPP   Y8P   Y8   88oop'               
+    """
+    print((" Vid2gif finished ".center(80, "=")))
+    if in_art:
+        print(end)
+
+
 def parse_input_files(in_args, in_ext):
     res = []
     if len(in_args.input) == 0:
@@ -145,6 +171,8 @@ if __name__ == "__main__":
         print("ERROR: 'ffmpeg' is not installed, please install it before use")
         quit()
 
+    intro_print(args.art)
+
     path = pathlib.Path().cwd()
     output_path = path / f"{__package__}_f{args.fps}_w{args.size}"
     if not output_path.is_dir():
@@ -197,3 +225,4 @@ if __name__ == "__main__":
     print("")
     print((f" Converting finished. Duration = {pretty_time_delta(end_time - start_time)} ".center(80, "=")))
     print("")
+    end_print(args.art)
