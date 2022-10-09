@@ -155,8 +155,12 @@ class TransitionMathFunction:
         return in_y
 
     def debug_function(self, in_title="Function graph"):
-        import matplotlib.pyplot as plt
-        import numpy as np
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+        except ImportError:
+            print("WARNING: to debug function graph, 'numpy and 'matplitlib' package should be installed first")
+            return
         x = np.linspace(self.a, self.b, 100)
         y = np.array(self.map_value(x.tolist()))
         fig = plt.figure()

@@ -99,6 +99,7 @@ def check_ratio(i_ratio):
 
 def check_shape(i_shape):
     if i_shape != "rectangle" and i_shape != "ellipse" and i_shape != "line":
+        print(f"WARNING: The shape '{i_shape}' is not recognized, '{SHAPE}' is used instead.")
         return SHAPE
     return i_shape
 
@@ -138,7 +139,7 @@ if __name__ == "__main__":
                         default=THICKNESS, metavar='\b')
     parser.add_argument('-a', '--shape', help='shape, option: "rectangle", "ellipse", "line"', type=str,
                         default=SHAPE, metavar='\b')
-    parser.add_argument('-n', '--corners', help='the percentage of rounded corners', type=float,
+    parser.add_argument('-n', '--corners', help='the percentage of rounded corners, should be in [0,0.5]', type=float,
                         default=ROUNDED_CORNERS, metavar='\b')
     parser.add_argument('-r', '--ratio', help='ratio between longest and smallest edge, should be in [0,1]', type=float,
                         default=SHAPE_WIDTH_TO_HEIGHT_RATIO, metavar='\b')
