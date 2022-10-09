@@ -147,7 +147,7 @@ class Updater:
         for child in in_tmp_path.iterdir():
             self.scripts_tmp_path = child / "Scripts"
 
-        if not self.scripts_tmp_path.is_folder():
+        if not self.scripts_tmp_path.is_dir():
             print(f"ERROR: could not download the project files, path: {self.scripts_tmp_path}")
             return False
         print("successfully downloaded the git repository files")
