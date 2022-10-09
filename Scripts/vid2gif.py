@@ -7,6 +7,8 @@ import time
 import argparse
 import pathlib
 import shutil
+import subprocess
+
 
 INPUT = []
 VIDEO_FORMAT = ".mp4"
@@ -15,7 +17,11 @@ GIF_WIDTH = 500
 SHOW_FFMPEG_VERBOSE = False
 MODE = "sierra2"  #
 MODES_NAMES = ["direct", "bayer", "sierra2", "sierra2_4a", "new", "magick", "magick_optimize"]
+ART = True
+
+
 MODES_HELP = """
+
 The methods used for converting videos to GIFs are presented bellow (all of these need ffmpeg to be installed):
 
  * direct: uses ffmpeg directly without any optimization (lowest quality, smallest file size).
@@ -29,9 +35,9 @@ The methods used for converting videos to GIFs are presented bellow (all of thes
  * new: uses ffmpeg paletteuse optimization method by calculating a palette for each frame (good quality, but big 
  file size)
  
- * imagick: uses ffmpeg with ImageMagick convert method.
+ * magick: uses ffmpeg with ImageMagick convert method.
  
- * imagick_optimize: same as previous but with color optimization (slightly less quality and file size)
+ * magick_optimize: same as previous but with color optimization (slightly less quality and file size)
  
  * all: produce a GIF with each method presented here 
 """
@@ -97,6 +103,15 @@ def sizeof_fmt(num, suffix="B"):
     return f"{num:.1f} Yi{suffix}"
 
 
+def check_if_image_magick_installed():
+    if shutil.which("convert") is None:
+        return False
+    res1 = subprocess.run(["convert", "--version"], stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1].lower()
+    if "imagemagick" in res1 or "image magick" in res1:
+        return True
+    return False
+
+
 def convert_video(i_in_path, i_out_path, i_fps, i_width, i_verbose, i_mode):
     if not i_in_path:
         return 0, 0, f"could not found: {i_in_path}"
@@ -109,17 +124,17 @@ def convert_video(i_in_path, i_out_path, i_fps, i_width, i_verbose, i_mode):
     scale_cmd = f'scale={i_width}:{i_width}:force_original_aspect_ratio=increase:flags=lanczos'
     out_gif = i_out_path / f"{i_in_path.stem}_{choice}.gif"
     if "magick" in choice:
-        if shutil.which("convert") is None:
-            return init_size, 0, "'imagick' in not installed, this mode could not be used"
+        if not check_if_image_magick_installed():
+            return init_size, 0, "'ImageMagick' in not installed, this mode could not be used"
     if choice == "direct":
         flt = f'"{fps_cmd},{scale_cmd}"'
     elif choice == "new":
         flt = f'"[0:v] {fps_cmd},{scale_cmd},split [a][b];[a] palettegen=stats_mode=single [p];[b][p] paletteuse=new=1"'
     elif choice == "magick":
-        flt = f'"{fps_cmd},{scale_cmd}" -f image2pipe -vcodec ppm - | convert -delay {100 / i_fps} -loop 0 - '
+        flt = f'"{fps_cmd},{scale_cmd}" -f image2pipe -vcodec ppm - | convert -delay {round(100 / i_fps)} -loop 0 - '
     elif choice == "magick_optimize":
         flt = f'"{fps_cmd},{scale_cmd}" -f image2pipe -vcodec ppm - |' \
-              f' convert -delay {100 / i_fps} -loop 0 -layers Optimize - '
+              f' convert -delay {round(100 / i_fps)} -loop 0 -layers Optimize - '
     else:
         flt = f'"[0:v] {fps_cmd},{scale_cmd},split [a][b];[a] palettegen [p];[b][p] paletteuse=dither={choice}"'
 
@@ -142,7 +157,7 @@ def get_mode_index(in_mode):
         if m == in_mode.lower().strip():
             return m_idx, m
     print(f"WARNING: mode '{in_mode}' is not recognized, '{MODE}' is used instead")
-    for m_idx, m in MODES_NAMES:
+    for m_idx, m in enumerate(MODES_NAMES):
         if m == MODE:
             return m_idx, MODE
     return 100, MODE
@@ -156,7 +171,7 @@ if __name__ == "__main__":
                         type=str, nargs='+', metavar='\b', default=INPUT)
     parser.add_argument('-f', '--fps', help='frame per second of the output GIFs', type=int,
                         default=FPS, metavar='\b')
-    parser.add_argument('-w', '--size', help='size of the smallest side of the resulting gif ( = min(height, width) )',
+    parser.add_argument('-s', '--size', help='size of the smallest side of the resulting gif ( = min(height, width) )',
                         type=int, default=GIF_WIDTH, metavar='\b')
     parser.add_argument('-m', '--mode', help=f"gif conversion methods: {modes_print} ('--mode help' for more info)",
                         type=str, default=MODE, metavar='\b')
@@ -164,6 +179,8 @@ if __name__ == "__main__":
                         type=str, default=VIDEO_FORMAT, metavar='\b')
     parser.add_argument('-v', '--ffmpeg_verbose', help="if True then show ffmpeg full verbose", type=bool,
                         default=SHOW_FFMPEG_VERBOSE, metavar='\b', action=argparse.BooleanOptionalAction)
+    parser.add_argument('-a', '--art', help='Display ASCII art', type=bool,
+                        default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     mode_idx, mode_print = get_mode_index(args.mode)
 
