@@ -233,7 +233,7 @@ We advise using **scoop** from [https://scoop.sh/](https://scoop.sh/) (a good al
 
 To install **scoop** and the other packages,
 type the following commands in PowerShell.
-To open a PowerShell open Windows Explorer ALT+F+S+R:
+To open a PowerShell open Windows Explorer ALT+F -> S -> R:
 
 ```
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -293,7 +293,7 @@ Copy-Item -Recurse -Force .\video-editing-py-script-main\video-editing-py-script
 
 * Now we need to add the 'Scripts' folder to the global PATH, so we can call the scripts from anywhere on Windows,
 For this, we need to use the PowerShell in administrator mode.
-To do so, open Windows explorer then hit ALT+F+S+A, then execute the following:
+To do so, open Windows explorer then hit ALT+F -> S -> A, then execute the following:
 
 ```
 setx path "%PATH%;C:\Scripts"
