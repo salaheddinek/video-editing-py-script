@@ -179,7 +179,7 @@ if __name__ == "__main__":
                                                  'sound removal.')
     parser.add_argument('-i', '--input', help='input video(s), if unspecified then all video in current directory '
                                               'are processed', type=str,  nargs='+', metavar='\b', default=INPUT)
-    parser.add_argument('-f', '--fps', help='frame per second of the output video (if negative the, keep original)',
+    parser.add_argument('-f', '--fps', help='frame per second of the output video (if negative then keep original)',
                         type=int, default=FPS, metavar='\b')
     parser.add_argument('-s', '--scale', help='scale of the result videos, if negative then keep original size',
                         type=int, default=SCALE, metavar='\b')

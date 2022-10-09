@@ -1,13 +1,20 @@
 #!/usr/bin/python3
+__version__ = "1.2.0"
+
 import curses
 import os
 import platform
 import pathlib
-
+import tempfile
+import subprocess
+import shutil
+import re
 
 SCRIPTS = []
 HELP_MSG = ""
 HELP_NAME = "useful cmd"
+UPDATE_NAME = "update all scripts"
+GITHUB_URL = "https://github.com/salaheddinek/video-editing-py-script.git"
 HEADER_MSG = ""
 CHOICE = 0
 
@@ -37,6 +44,8 @@ def character(stdscr):
             if i == option:
                 attr = attributes['highlighted']
             elif SCRIPTS[i] == HELP_NAME:
+                attr = attributes['req']
+            elif SCRIPTS[i] == UPDATE_NAME:
                 attr = attributes['req']
             elif SCRIPTS[i] == "exit":
                 attr = attributes['exit']
@@ -74,7 +83,7 @@ def get_scripts():
             if s_path.name != cur_file.name and s_path.name != "autolock.sh":
                 SCRIPTS += [s_path]
     SCRIPTS.sort()
-    SCRIPTS += [HELP_NAME, "exit"]
+    SCRIPTS += [HELP_NAME, UPDATE_NAME, "exit"]
 
 
 def get_title(i_str):
@@ -108,13 +117,76 @@ def format_help_message():
     HELP_MSG += "* copy with grep: 'grep -lir \"<WORD>\" | xargs cp -t <TARGET_FODLER>'\n"
 
 
+class Updater:
+    def __init__(self, git_url):
+        self.git_url = git_url
+        self.scripts_tmp_path = None
+
+    def update_all_scripts(self):
+        # print(self.git_url)
+        init_version = self._get_version_from_file()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = pathlib.Path(tmp_dir)
+            if not self._download_update(tmp_path):
+                return
+            self._replace_current_files()
+
+        new_version = self._get_version_from_file()
+        print(f"successfully updated from version {init_version} to version {new_version}")
+
+    def _download_update(self, in_tmp_path):
+
+        if not shutil.which("git"):
+            print("ERROR: could not update scripts: the command 'git' is not installed, "
+                  "please install it before updating (for example: scoop install git)")
+            return False
+        print("cloning the repository from github ...")
+        subprocess.run(["git", "clone", self.git_url], cwd=str(in_tmp_path))
+
+        for child in in_tmp_path.iterdir():
+            self.scripts_tmp_path = child / "Scripts"
+
+        if not self.scripts_tmp_path.is_dir():
+            print(f"ERROR: could not download the project files, path: {self.scripts_tmp_path}")
+            return False
+        print("successfully downloaded the git repository files")
+
+        return True
+
+    @staticmethod
+    def _get_version_from_file():
+        cur_file = pathlib.Path(__file__)
+        with cur_file.open("r") as f:
+            content = f.read()
+            if "__version__" not in content:
+                return "unknown"
+        with cur_file.open("r") as f:
+            txt = f.read()
+            v_re = r"^__version__ = ['\"]([^'\"]*)['\"]"
+            version = re.search(v_re, txt, re.M)
+            version = version.group(1)
+        return version
+
+    def _replace_current_files(self):
+        cur_scripts_folder = pathlib.Path(__file__).parent
+
+        for child in self.scripts_tmp_path.iterdir():
+            old_script = cur_scripts_folder / child.name
+            old_script.unlink(missing_ok=True)
+            child.rename(old_script)
+
+
 if __name__ == "__main__":
     get_scripts()
     format_help_message()
     curses.wrapper(character)
 
-    if CHOICE == len(SCRIPTS) - 2:
+    if CHOICE == len(SCRIPTS) - 3:
         print(HELP_MSG)
+    if CHOICE == len(SCRIPTS) - 2:
+        update_process = Updater(GITHUB_URL)
+        update_process.update_all_scripts()
     elif CHOICE == len(SCRIPTS) - 1:
         print("")
     else:
