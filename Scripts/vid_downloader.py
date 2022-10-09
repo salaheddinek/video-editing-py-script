@@ -78,22 +78,22 @@ def download_partial_video(in_url, in_timestamps, in_output, in_debug, in_video_
                           stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
 
     url_2 = res1.split("\n")
-    print(url_2)
+    #print(url_2)
     if len(url_2) != 2:
         raise ValueError("ERROR: the command  'youtube-dl --get-url' should produce 2 urls")
     start_t = f'{in_timestamps[0].strftime("%H:%M:%S")}.00'
     end_t = f'{in_timestamps[1].strftime("%H:%M:%S")}.00'
-    res = "ffmpeg -hide_banner"
+    res = ["ffmpeg", "-hide_banner"]
     if not in_audio_only:
-        res += f" -ss {start_t} -to {end_t} -i '{url_2[0]}'"
+        res += ["-ss", start_t, "-to", end_t, "-i", url_2[0]]
     if not in_video_only:
-        res += f" -ss {start_t} -to {end_t} -i '{url_2[1]}'"
-    res += f" {in_output}.mp4"
+        res += ["-ss", start_t, "-to", end_t, "-i", url_2[1]]
+    res += [f"{in_output}.mp4"]
     if in_debug:
         print("exec command: \n")
-        print(res)
+        print(" ".join(res))
     else:
-        os.system(res)
+        subprocess.run(res)
 
 
 def get_video_name(in_url, in_timestamps):
@@ -187,17 +187,20 @@ if __name__ == "__main__":
         download_partial_video(url, timestamps, output_path, args.debug, args.video_only, args.audio_only)
     else:
         if args.video_only:
-            cmd = f"youtube-dl -f 'bestvideo[height<=?1080]/best' --output '{output_path}.%(ext)s' {url}"
+            cmd_str = f"youtube-dl -f 'bestvideo[height<=?1080]/best' --output '{output_path}.%(ext)s' {url}"
+            cmd = ["youtube-dl", "-f", "bestsvideo[height<=?1080]/best", "--output", f"{output_path}.%(ext)s", url]
         elif args.audio_only:
-            cmd = f"youtube-dl -f 'bestaudio/best' --output '{output_path}.%(ext)s' {url}"
+            cmd_str = f"youtube-dl -f 'bestaudio/best' --output '{output_path}.%(ext)s' {url}"
+            cmd = ["youtube-dl", "-f", "bestaudio/best", "--output", f"{output_path}.%(ext)s", url]
         else:
-            cmd = f"youtube-dl -f 'bestvideo[height<=?1080]+bestaudio/best' --output '{output_path}.%(ext)s' {url}"
+            cmd_str = f"youtube-dl -f 'bestvideo[height<=?1080]+bestaudio/best' --output '{output_path}.%(ext)s' {url}"
+            cmd = ["youtube-dl", "-f", "bestvideo[height<=?1080]+bestaudio/best", "--output", f"{output_path}.%(ext)s", url]
 
         if args.debug:
             print("exec command: \n")
-            print(cmd)
+            print(cmd_str)
         else:
-            os.system(cmd)
+            subprocess.run(cmd)
 
     if not args.debug:
         print("")
