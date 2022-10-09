@@ -6,7 +6,6 @@ import os
 import pathlib
 import shutil
 import subprocess
-from colorama import Fore, Style
 
 
 ART = True
@@ -22,7 +21,7 @@ VIDEO_LENGTH = 1.5
 ANTIALIASING = False
 
 
-def intro_print():
+def intro_print(in_art):
     """ Taken from https://patorjk.com/software/taag using 4MAX font"""
     intro = """
     888888            db    88b 88 88 8b    d8    db    888888 88  dP"Yb  88b 88
@@ -30,25 +29,22 @@ def intro_print():
       88   .o.      dP__Yb  88 Y88 88 88YbdP88  dP__Yb    88   88 Yb   dP 88 Y88
       88   `"'     dP""\""Yb 88  Y8 88 88 YY 88 dP""\""Yb   88   88  YbodP  88  Y8
     """
+    if in_art:
+        print(intro)
+    print((" starting text animation ".center(80, "=")))
+    print("")
 
-    lines = intro.split("\n")
-    mid_p = 17
-    for line in lines:
-        print(f"{Fore.GREEN}{line[3:mid_p]}{Fore.LIGHTYELLOW_EX}{line[mid_p+2:]}{Style.RESET_ALL}")
 
-
-def end_print():
+def end_print(in_art):
     end = """
                ,d8PPPP 888  ,d8   88PPP.
     ______     d88ooo  888_dPY8   88   8     ______
     XXXXXX   ,88'      8888' 88   88   8     XXXXXX
              88bdPPP   Y8P   Y8   88oop'
     """
-    lines = end.split("\n")
-    p1, p2 = 10, 45
-    for line in lines:
-        print(f"{' ' * 10}{Fore.MAGENTA}{line[3:p1]}{Fore.CYAN}{line[p1:p2]}"
-              f"{Fore.MAGENTA} {line[p2:]}{Style.RESET_ALL}")
+    print((" text animation finished ".center(80, "=")))
+    if in_art:
+        print(end)
 
 
 def progress(count, total, status=''):
@@ -222,15 +218,10 @@ if __name__ == "__main__":
     font_path = get_font_path(args.font)
     # print("Font path: " + font_path)
     if font_path == "":
-        print("Warning: Could not font path for font: " + args.font)
-        exit(1)
+        print("ERROR: Could not find path for the provided font: " + args.font)
+        quit()
 
-    if args.art:
-        intro_print()
-        # end_print()
-        # quit()
-    else:
-        print((" starting text animation video ".center(80, "=")))
+    intro_print(args.art)
 
     print(f"font path: {font_path}")
     input_text = args.input
@@ -253,7 +244,6 @@ if __name__ == "__main__":
         print(f"saving the final image, path: {args.output}.png")
         merge_images_into_video(input_text, tmp_path, args.output, args.verbose, args.fps, args.length)
         print(f"saving video, path: {args.output}.mov")
+        print("")
 
-    if args.art:
-        end_print()
-        quit()
+    end_print(args.art)

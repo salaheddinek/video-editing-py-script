@@ -3,6 +3,7 @@ import pathlib
 import argparse
 import shutil
 import os
+import platform
 
 
 SIZE = [600, 600]  # width, height
@@ -115,7 +116,9 @@ def produce_and_copy_additional_cmd_line(i_color, i_thickness, i_out_path):
     if not animation_script.is_file():
         return
     cmd = f'{animation_script} -i {i_out_path} -c {i_color[0]},{i_color[1]},{i_color[2]} -w {i_thickness}'
-    print('to create an animation from the SVG file, use teh following command:\n\n')
+    if platform.system().lower() == "windows":
+        cmd = "py " + cmd
+    print('to create an animation from the SVG file, use the following command:\n\n')
     print(cmd)
     print("")
     if shutil.which("xclip"):

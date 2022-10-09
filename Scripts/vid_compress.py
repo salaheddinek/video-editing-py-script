@@ -2,7 +2,6 @@
 __package__ = "vid_compress"
 from datetime import datetime
 import shutil
-from colorama import Fore, Style
 import argparse
 import os
 import pathlib
@@ -52,7 +51,7 @@ More codecs can be found by executing 'ffmpeg -encoders' command line.
 """
 
 
-def intro_print():
+def intro_print(in_art):
     """ Taken from https://patorjk.com/software/taag using 4MAX font"""
     intro = """
     Yb    dP          dP""b8  dP"Yb  8b    d8 88""Yb 88""Yb 888888 .dP"Y8 .dP"Y8 
@@ -60,25 +59,22 @@ def intro_print():
       YbdP   .o.     Yb      Yb   dP 88YbdP88 88\"""  88"Yb  88""   o.`Y8b o.`Y8b 
        YP    `"'      YboodP  YbodP  88 YY 88 88     88  Yb 888888 8bodP' 8bodP' 
     """
+    if in_art:
+        print(intro)
+    print((" starting compressing video(s) ".center(80, "=")))
+    print("")
 
-    lines = intro.split("\n")
-    mid_p = 18
-    for line in lines:
-        print(f"{Fore.RED}{line[3:mid_p]}{Fore.LIGHTYELLOW_EX}{line[mid_p+2:]}{Style.RESET_ALL}")
 
-
-def end_print():
+def end_print(in_art):
     end = """
                ,d8PPPP 888  ,d8   88PPP.            
     ______     d88ooo  888_dPY8   88   8     ______ 
     XXXXXX   ,88'      8888' 88   88   8     XXXXXX 
              88bdPPP   Y8P   Y8   88oop'               
     """
-    lines = end.split("\n")
-    p1, p2 = 10, 45
-    for line in lines:
-        print(f"{' ' * 10}{Fore.MAGENTA}{line[3:p1]}{Fore.CYAN}{line[p1:p2]}"
-              f"{Fore.MAGENTA} {line[p2:]}{Style.RESET_ALL}")
+    print((" Compressing finished ".center(80, "=")))
+    if in_art:
+        print(end)
 
 
 def create_folder(in_path):
@@ -223,12 +219,7 @@ if __name__ == "__main__":
     if not extension.startswith("."):
         extension = "." + extension
 
-    if args.art:
-        intro_print()
-        # end_print()
-        # quit()
-    else:
-        print((" starting compressing video ".center(80, "=")))
+    intro_print(args.art)
 
     print_info(args, extension)
 
@@ -271,6 +262,4 @@ if __name__ == "__main__":
     print((f" Compressing finished. Duration = {pretty_time_delta(end_time - start_time)} ".center(80, "=")))
     print("")
 
-    if args.art:
-        end_print()
-        quit()
+    end_print(args.art)

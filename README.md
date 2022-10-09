@@ -17,6 +17,8 @@ but these scripts should also work on macOS because python is a system agnostic 
 	+ [mirror_vids](#mirror_vids)
 
 - [Prerequisites](#Prerequisites)
+	+ [For Linux](#For-Linux)
+	+ [For Windows](#For-Windows)
 	+ [ffmpeg](#ffmpeg)
 	+ [youtube-dl](#youtube-dl)
 	+ [python packages](#python-packages)
@@ -196,70 +198,56 @@ This command will take 'bird.mp3' and produce a video of 8 copies of the initial
 
 # Prerequisites
 
-In this section, we present multiple packages that need to be installed before running the scripts.
+In this section, we present multiple packages that need to be installed before running the scripts,
+The commands needed to install these will be shown in the next section:
+
+[FFmpeg](https://www.ffmpeg.org/) is a command line video editing program. And it is used by almost all scripts provided by this repository.
+
+[Youtube-dl](https://github.com/ytdl-org/youtube-dl) is a package used to download videos from YouTube.com (and a few more sites) using command line.
+
+## For Linux
+
 On Linux, you can use your command line favorite package manager.
 In our example, we will use Aptitude (```apt-get``` Ubuntu based).
+
+Here is teh list of commands to install FFmpeg, youtube-dl and the python packages:
+
+
+
+```
+sudo apt install ffmpeg
+sudo apt install youtube-dl
+
+python3 -m pip install --upgrade pip
+python3 -m pip install --upgrade Pillow
+python3 -m pip install --upgrade svg.path
+```
+
+
+## For Windows
+
 
 On Windows, the best option is to use a command line package manager.
 We advise using **scoop** from [https://scoop.sh/](https://scoop.sh/) (a good alternative to scoop is **[Chocolatey](https://chocolatey.org/install)**).
 
-To install **scoop** type the following commands in PowerShell (open Explorer then ALT+F+S+R):
+To install **scoop** and the other packages,
+type the following commands in PowerShell.
+To open a PowerShell open Windows Explorer ALT+F+S+R:
 
 ```
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 irm get.scoop.sh | iex
-```
 
-## ffmpeg
-
-[FFmpeg](https://www.ffmpeg.org/) is a command line video editing program. And it is used by almost all scripts provided by this repository.
-
-On linux, type:
-
-```
-sudo apt install ffmpeg
-```
-
-On windows, type:
-
-```
 scoop install ffmpeg
-```
-
-
-## youtube-dl
-
-[Youtube-dl](https://github.com/ytdl-org/youtube-dl) is a package used to download videos from YouTube.com (and a few more sites) using command line.
-
-On linux, type:
-
-```
-sudo apt install youtube-dl
-```
-
-On windows, type:
-
-```
 scoop install youtube-dl
+
+py -m pip install --upgrade pip
+py -m pip install --upgrade Pillow
+py -m pip install --upgrade svg.path
+py -m pip install --upgrade curses
+py -m pip install --upgrade windows-curses
 ```
 
-
-## python packages
-
-Here is the list of the Python packages used in the different scripts:
-
-colorama
-svg.path
-Pillow
-
-To install these package, execute the following commands:
-
-```
-python3 -m pip install --upgrade pip
-python3 -m pip install --upgrade Pillow
-python3 -m pip install --upgrade colorama
-python3 -m pip install --upgrade svg.path
-```
 
 # How to Install and Use
 
@@ -294,5 +282,33 @@ so that they can be used from anywhere in your system.
 
 ## Make scripts global for Windows
 
-Coming soon ...
+* For Windows users, start by downloading and unpacking the repository in the zip file.
+
+* Copy the 'Scripts' folder to your desired place, In our case we put it under ```C:\Scripts```, use the following command to do so:
+
+```
+Copy-Item -Recurse -Force .\video-editing-py-script-main\video-editing-py-script-main\Scripts\ C:\Scripts
+```
+
+* Now we need to add the 'Scripts' folder to the global PATH, so we can call the scripts from anywhere on Windows,
+For this, we need to use the PowerShell in administrator mode.
+To do so, open Windows explorer then hit ALT+F+S+A, then execute the following:
+
+```
+setx path "%PATH%;C:\Scripts"
+```
+
+* The last thing that need to be done is launch the script 'Windows_first_time_use.py',
+this will replace the .py file with .bat files:
+
+```
+py C:\Scripts\Windows_first_time_use.py
+```
+
+* To verify if everything is ok, open a new PowerShell.
+Then type 'cmd_' and hit TAB key, you should see 'cmd_help.bat',
+this is the only command that you need to **memorize**,
+as it shows you the rest of scripts.
+Remember to replace the '.py' with '.bat' to run any script. Enjoy!
+
 
