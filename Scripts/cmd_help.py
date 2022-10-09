@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 __version__ = "1.2.0"
+
 import curses
 import os
 import platform
@@ -8,7 +9,6 @@ import tempfile
 import subprocess
 import shutil
 import re
-
 
 SCRIPTS = []
 HELP_MSG = ""
@@ -157,6 +157,10 @@ class Updater:
     @staticmethod
     def _get_version_from_file():
         cur_file = pathlib.Path(__file__)
+        with cur_file.open("r") as f:
+            content = f.read()
+            if "__version__" not in content:
+                return "unknown"
         with cur_file.open("r") as f:
             txt = f.read()
             v_re = r"^__version__ = ['\"]([^'\"]*)['\"]"
