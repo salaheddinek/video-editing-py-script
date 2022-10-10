@@ -63,11 +63,11 @@ def produce_the_bat_files(in_installation_path, in_installation_py_scripts):
     for ext in ["*.py", "*.pyz"]:
         for py_file in in_installation_py_scripts.glob(ext):
             stem = py_file.stem
-            bat_file = scripts_folder / (stem + ".bat")
+            bat_file = in_installation_path / (stem + ".bat")
             if bat_file.is_file():
                 continue
             with bat_file.open("w") as f:
-                f.write(f"py {in_installation_path / (stem + '.py')} %*")
+                f.write(f"py {in_installation_py_scripts / (stem + '.py')} %*")
             num_file += 1
     print(f"generated {num_file} new '.bat' files,  these well be used to launch the '.py' files")
 
