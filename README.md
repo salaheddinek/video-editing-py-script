@@ -267,12 +267,6 @@ so that they can be used from anywhere in your system.
 
 ## Make scripts global for Linux
 
-```
-git clone https://github.com/salaheddinek/video-editing-py-script.git
-python3 video-editing-py-script/make_my_scripts_global.py "~/Scripts"
-
-```
-
 * Firstly, download the GitHub repo using ```git clone```:
 
 ```
