@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-__version__ = "1.3.3"
+__version__ = "1.3.4"
 
 import curses
 import os
@@ -10,6 +10,7 @@ import subprocess
 import shutil
 import re
 import argparse
+import stat
 
 SCRIPTS = []
 HELP_MSG = ""
@@ -206,7 +207,10 @@ class Updater:
             return
         cur_file = pathlib.Path(__file__)
         cur_scripts_folder = cur_file.parent
-        subprocess.run(["chmod", "+x", "*.py"], cwd=str(cur_scripts_folder))
+        for ext in ["*.py", "*.pyz"]:
+            for ele in cur_scripts_folder.glob(ext):
+                ele.chmod(ele.stat().st_mode | stat.S_IEXEC)
+
         print("updated execution permissions for the new files")
 
 
