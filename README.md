@@ -337,3 +337,5 @@ this is the only command that you need to **memorize**,
 as it shows you the rest of scripts.
 Remember to replace the '.py' with '.bat' to run any script. Enjoy!
 
+<ins>Side Note:</ins> when using PowerShell, scripts help messages (-h/--help) might miss some characters,
+use Windows CMD to verify the help message in this case.
