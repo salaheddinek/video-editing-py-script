@@ -267,12 +267,6 @@ so that they can be used from anywhere in your system.
 
 ## Make scripts global for Linux
 
-```
-git clone https://github.com/salaheddinek/video-editing-py-script.git
-python3 video-editing-py-script/make_my_scripts_global.py "~/Scripts"
-
-```
-
 * Firstly, download the GitHub repo using ```git clone```:
 
 ```
@@ -343,3 +337,5 @@ this is the only command that you need to **memorize**,
 as it shows you the rest of scripts.
 Remember to replace the '.py' with '.bat' to run any script. Enjoy!
 
+<ins>Side Note:</ins> when using PowerShell, scripts help messages (-h/--help) might miss some characters,
+use Windows CMD to verify the help message in this case.
