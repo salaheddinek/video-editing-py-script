@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-__version__ = "1.2.0"
+__version__ = "1.3.2"
 
 import curses
 import os
@@ -134,6 +134,7 @@ class Updater:
             self._replace_current_files()
 
         self._update_bat_files_for_windows()
+        self._give_execution_permission()
         new_version = self._get_version_from_file()
         print(f"successfully updated from version {init_version} to version {new_version}")
 
@@ -189,13 +190,24 @@ class Updater:
         if not cur_file_bat_launcher.is_file():
             return
         num_py_scripts = 0
-        for py_script in cur_scripts_folder.iterdir():
-            bat_launcher = bat_files_folder / (py_script.stem + ".bat")
-            bat_launcher.unlink(missing_ok=True)
-            with bat_launcher.open("w") as f:
-                f.write(f"py {py_script} %*")
-            num_py_scripts += 1
-        print(f"updated {num_py_scripts} '.bat' script launchers, path: {bat_files_folder}")
+        for ext in ["*.py", "*.pyz"]:
+            for py_script in cur_scripts_folder.glob(ext):
+                bat_launcher = bat_files_folder / (py_script.stem + ".bat")
+                if bat_launcher.is_file():
+                    continue
+                with bat_launcher.open("w") as f:
+                    f.write(f"py {py_script} %*")
+                num_py_scripts += 1
+        print(f"generated {num_py_scripts} '.bat' script launchers, path: {bat_files_folder}")
+
+    @staticmethod
+    def _give_execution_permission():
+        if platform.system().lower() != "linux":
+            return
+        cur_file = pathlib.Path(__file__)
+        cur_scripts_folder = cur_file.parent
+        subprocess.run(["chmod", "+x", "*.py"], cwd=str(cur_scripts_folder))
+        print("updated execution permissions for the new files")
 
 
 if __name__ == "__main__":

@@ -36,7 +36,7 @@ To show information about any script, execute ```<SCRIPT_NAME>.py --help```
 
 This script shows a list that contains all other scripts,
 and let you select which one you want to use to display its help.
-It also allows you to update all the scripts (network needed)
+It also allows you to update all the scripts (network needed).
 So, this is the only command you need to **memorize**.
 
 To use it, just execute:
@@ -208,6 +208,8 @@ The commands needed to install these will be shown in the next section:
 
 [Youtube-dl](https://github.com/ytdl-org/youtube-dl) is a package used to download videos from YouTube.com (and a few more sites) using command line.
 
+[Git](https://git-scm.com/) is used to update the scripts if the user wishes to do so.
+
 ## For Linux
 
 On Linux, you can use your command line favorite package manager.
@@ -220,6 +222,7 @@ Here is teh list of commands to install FFmpeg, youtube-dl and the python packag
 ```
 sudo apt install ffmpeg
 sudo apt install youtube-dl
+sudo apt install git
 
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade Pillow
@@ -243,11 +246,11 @@ irm get.scoop.sh | iex
 
 scoop install ffmpeg
 scoop install youtube-dl
+scoop install git
 
 py -m pip install --upgrade pip
 py -m pip install --upgrade Pillow
 py -m pip install --upgrade svg.path
-py -m pip install --upgrade curses
 py -m pip install --upgrade windows-curses
 ```
 
@@ -264,57 +267,79 @@ so that they can be used from anywhere in your system.
 
 ## Make scripts global for Linux
 
-* Firstly, download the GitHub repo using ```git clone``` or download and unpack the zip file.
+```
+git clone https://github.com/salaheddinek/video-editing-py-script.git
+python3 video-editing-py-script/make_my_scripts_global.py "~/Scripts"
 
-* Copy the 'Scripts' folder to your preferred directory, in our case we will put it in the home folder, use the following command:
+```
 
-```cp -r video-editing-py-script/Scripts/ ~/Scripts```
+* Firstly, download the GitHub repo using ```git clone```:
 
-* Give the python scripts execution permission, use the following command:
+```
+git clone https://github.com/salaheddinek/video-editing-py-script.git
+```
 
-```cd ~/Scripts; chmod +x *.py```
+* Then, make the scripts global by running the using our installation script.
+In this example, we choose to install the scripts under the folder ```~/Scripts```:
 
-* Add the 'Scripts' to your Global paths. For bash terminal, use the following command:
+```
+python3 video-editing-py-script/make_my_scripts_global.py "~/Scripts"
+```
 
-```echo 'export PATH=$PATH:"$HOME/Scripts"' >> ~/.bashrc```
+The previous command copy the scripts to a new folder ("~/Scripts" in this case),
+then it gives all the scripts execution permission,
+then it modifies ".bashrc" so that all scripts in this folder can be run from anywhere in your system.
+
 
 * To test if everything is ok. Open a new terminal. Type the following command, and it should show a list of available scripts:
 
-```cmd_help.py```
-
+```
+cmd_help.py
+```
 
 ## Make scripts global for Windows
 
-* For Windows users, start by downloading and unpacking the repository in the zip file.
-
-* Copy the 'Scripts' folder to your desired place, In our case we put it under ```C:\Scripts```, use the following command to do so:
+* For Windows users, start by downloading the repository files.
+To do so, open PowerShell in your download folder by opening Windows Explorer,
+Then press ALT+F -> S -> R,
+then run the following command to download the files:
 
 ```
-Copy-Item -Recurse -Force .\video-editing-py-script-main\video-editing-py-script-main\Scripts\ C:\Scripts
+git clone https://github.com/salaheddinek/video-editing-py-script.git
 ```
 
-* Now we need to add the 'Scripts' folder to the global PATH, so we can call the scripts from anywhere on Windows,
-For this, we need to use the PowerShell in administrator mode.
-To do so, open Windows explorer then hit ALT+F -> S -> A, then execute the following:
+* Then, make the scripts global by running the using our installation script.
+In this example, we choose to install the scripts under the folder ```C:\Scripts```:
+
+```
+py .\video-editing-py-script\\make_my_scripts_global.py "C:\Scripts"
+```
+
+The previous command copy the scripts to a new folder ("C:\Scripts" in this case),
+then, it generates multiple '.bat' files to run the '.py' files.
+
+
+
+
+* Now we need to add the 'Scripts' folder to the global PATH,
+so we can call the scripts from anywhere on Windows.
+For this, we need to use the PowerShell in **ADMINISTRATOR** mode.
+To do so, open Windows explorer then hit ALT+F -> S -> A, then execute the following command:
 
 ```
 setx path "%PATH%;C:\Scripts"
 ```
 
-* The last thing that need to be done is launch the script 'Windows_first_time_use.py',
-this will replace the .py file with .bat files:
 
-```
-py C:\Scripts\Windows_first_time_use.py
-```
+<ins>Warning:</ins> after running the previous command,
+Windows sometimes  uninstalls 'scoop' package manager,
+to verify if it is still installed, execute ```scoop --version```.
+Install it again if it is missing.
+
 
 * To verify if everything is ok, open a new PowerShell.
 Then type 'cmd_' and hit TAB key, you should see 'cmd_help.bat',
 this is the only command that you need to **memorize**,
 as it shows you the rest of scripts.
 Remember to replace the '.py' with '.bat' to run any script. Enjoy!
-
-*Side Note*: when using PowerShell, scripts help messages (-h/--help) might miss some characters,
-use Windows CMD to verify the help message in this case.
-
 
