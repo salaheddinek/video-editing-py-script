@@ -226,7 +226,7 @@ if __name__ == "__main__":
 
     if CHOICE == len(SCRIPTS) - 3:
         print(HELP_MSG)
-    if CHOICE == len(SCRIPTS) - 2:
+    elif CHOICE == len(SCRIPTS) - 2:
         update_process = Updater(GITHUB_URL)
         update_process.update_all_scripts()
     elif CHOICE == len(SCRIPTS) - 1:
