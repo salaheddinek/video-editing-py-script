@@ -6,6 +6,7 @@ but these scripts should also work on macOS because python is a system agnostic 
 
 - [The Scripts usage](#The-Scripts-usage)
 	+ [cmd_help](#cmd_help)
+	+ [vid_transition](#vid_transition)
 	+ [vid_compress](#vid_compress)
 	+ [vid_downloader](#vid_downloader)
 	+ [pic2vid](#pic2vid)
@@ -14,7 +15,6 @@ but these scripts should also work on macOS because python is a system agnostic 
 	+ [file2txt](#file2txt)
 	+ [vid2gif](#vid2gif)
 	+ [text_animator](#text_animator)
-	+ [mirror_vids](#mirror_vids)
 
 - [Prerequisites](#Prerequisites)
 	+ [For Linux](#For-Linux)
@@ -43,6 +43,48 @@ To use it, just execute:
 
 ```
 cmd_help.py
+```
+## vid_transition
+
+Creates a smooth transition between two videos. Some examples:
+
+#### rotation transition
+
+<img src="readme_photos/vid_transition_rot.gif" alt="vid_transition_rot_gif" width="250"/>
+
+#### zoom in transition
+
+<img src="readme_photos/vid_transition_zoom.gif" alt="vid_transition_zoom_gif" width="250"/>
+
+#### translation transition
+
+<img src="readme_photos/vid_transition_tran.gif" alt="vid_transition_tran_gif" width="250"/>
+
+#### long translation transition + brightness transition
+
+<img src="readme_photos/vid_transition_lg_tran.gif" alt="vid_transition_lg_tran_gif" width="250"/>
+
+Makes a transition animation between two videos, using the last part of the first video, and the first part of the second video.
+
+Example:
+
+```
+vid_transition.py -i ex_vid1.mp4  ex_vid2.mp4 --animation translation --num_frames 15 --max_brightness 1.5
+```
+
+Let's break down this command: ```-i ex_vid1.mp4  ex_vid2.mp4``` refers to the input videos used for animation.
+```--num_frames 15``` means that the program will take the last 15 frames of the video 'ex_vid1.mp4' and the
+first 15 frames of the video 'ex_vid2.mp4' in order to make the seamless animation.
+```--animation translation``` means we will use short translation animation.
+Finally, ```--max_brightness 1.5``` mean we also want to add brightness animation,
+and the value 1.5 (150%) refers to the maximum value of brightness, at the midpoint of the animation.
+In other words, the brightness starts at 100% goes to 150% after 15 frames,
+then comes back to 100% after another 15 frames.
+
+To show all transition animation, type the following command:
+
+```
+vid_transition.py -a help
 ```
 
 ## vid_compress
@@ -184,20 +226,6 @@ The color of the text will be red, and it will have the default size of 600x600 
 The script will try to fit the text in the text bounding box of 550x300 pixels,
 and it will calculate the font size automatically.
 
-## mirror_vids
-
-<img src="readme_photos/mirror_vids.gif" alt="mirror_vids_gif" width="250"/>
-
-Create array of video, could be horizontally or vertically or both, stacked videos are flipped.
-Useful to perform video transition animation.
-
-For example:
-
-```
-mirror_vids.py -i bird.mp3 -o bird_mirrors.mp3
-```
-
-This command will take 'bird.mp3' and produce a video of 8 copies of the initial video stacked around the initial video.
 
 # Prerequisites
 
