@@ -719,7 +719,10 @@ class DataHandler:
         fps = str(self.fps)
         for idx in range(2):
             log_info(f"merging phase_{idx} images into a video ...")
-            cmd = ["ffmpeg", "-hide_banner", "-framerate", fps, "-y", "-r", fps,  "-i",
+            img_names = [f.stem for f in res_folders[idx].glob("*.png")]
+            img_names.sort()
+            start_idx = f"{max(int(img_names[0]) - 1, 0):04d}"
+            cmd = ["ffmpeg", "-hide_banner", "-start_number", start_idx, "-framerate", fps, "-y", "-r", fps,  "-i",
                    str(res_folders[idx] / "%04d.png"), "-r", fps, "-vcodec", _OUTPUT_VIDEO_CODEC,
                    str(output_videos[idx])]
             self._exec_command(cmd, f"command used for merging phase_{idx} images into a video ...")
