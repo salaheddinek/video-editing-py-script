@@ -31,10 +31,22 @@ _OUTPUT_VIDEO_TYPE = ".mp4"
 _OUTPUT_VIDEO_CODEC = "h264"
 _LIMITS = {"rotation": (5, 90), "brightness": (0.0, 2.0), "blur": (0.005, 1.0),
            "distortion": (0.3, 1.0), "zoom": (1.2, 2.0)}
-_ANIMATION_HELP = """  
-    TODO later
+_ANIMATION_HELP = f"""  
+This program supports multiple types of animation. The arguments 'max_blur', 'max_distortion' and 'max_brightness' \
+affect all these types. Whereas, 'max_rotation' and 'max_zoom' only affect [rotation] and [zoom] animations \
+respectively. Here is the list of supported animations and the number of frames needed for each (assuming that the \
+argument 'num_frames' is kept at {NUM_FRAMES}):
+
+ * [rotation]: clockwise rotation, has 2 phases and needs {NUM_FRAMES*2} frames.
+ * [rotation_inv]: anti-clockwise rotation, has 2 phases and needs {NUM_FRAMES*2} frames.
+ * [zoom_in]: zooms inwards, has 2 phases and needs {NUM_FRAMES*2} frames.
+ * [zoom_out]: zooms outwards, has 2 phases and needs {NUM_FRAMES*2} frames.
+ * [translation]: translation from left to right, has 2 phases and needs {NUM_FRAMES*2} frames.
+ * [translation_inv]: translation from right to left, has 2 phases and needs {NUM_FRAMES*2} frames.
+ * [long_translation]: translation from left to right, has 3 phases and needs {NUM_FRAMES*3} frames ({NUM_FRAMES} from \
+the first video, and {NUM_FRAMES*2} from the second one). 
+ * [long_translation_inv]: translation from right to left, has 3 phases and needs {NUM_FRAMES*3} frames.        
 """
-# TODO write this
 
 
 def log_debug(msg):
@@ -175,6 +187,7 @@ class AnimationActions:
     def _get_long_translation_actions(self, left2right=True):
         num_frames1 = self.half_animation_num_frames
         num_frames1_30p = int(round(num_frames1 * 0.3, 0))
+        num_frames1_50p = int(round(num_frames1 * 0.5, 0))
         num_frames2 = 2 * self.half_animation_num_frames
         num_frames2_30p = int(round(num_frames2 * 0.3, 0))
         # --- mirror frames ---
@@ -198,8 +211,8 @@ class AnimationActions:
         self.phase1_actions.append(fa_crop1)
 
         fa_crop2 = FramesActions(FramesActions.Type.crop)
-        self._linear(fa_crop2, crop_2_values[0], crop_2_values[1], num_frames1)
-        self._polynomial_inv(fa_crop2, crop_2_values[1], crop_2_values[2], num_frames1)
+        # self._linear(fa_crop2, crop_2_values[0], crop_2_values[1], num_frames1)
+        self._polynomial_inv(fa_crop2, crop_2_values[0], crop_2_values[2], 2 * num_frames1)
         fa_crop2.values = [(v, 0) for v in fa_crop2.values]
         self.phase2_actions.append(fa_crop2)
 
@@ -222,16 +235,17 @@ class AnimationActions:
         # --- distortion ---
         if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
             fa_ds1, fa_ds2 = FramesActions(FramesActions.Type.distortion), FramesActions(FramesActions.Type.distortion)
-            self._polynomial(fa_ds1, 0.0, self.max_distortion, num_frames1 - num_frames1_30p)
-            fa_ds1.values += [self.max_distortion for _ in range(num_frames1_30p)]
-            fa_ds2.values = [self.max_distortion for _ in range(num_frames1 + num_frames1_30p)]
-            self._polynomial(fa_ds2, self.max_distortion, 0.0, num_frames1 - num_frames1_30p)
+            self._polynomial(fa_ds1, 0.0, self.max_distortion, num_frames1 - num_frames1_50p)
+            fa_ds1.values += [self.max_distortion for _ in range(num_frames1_50p)]
+            fa_ds2.values = [self.max_distortion for _ in range(num_frames1 + num_frames1_50p)]
+            self._polynomial(fa_ds2, self.max_distortion, 0.0, num_frames1 - num_frames1_50p)
             self.phase1_actions.append(fa_ds1)
             self.phase2_actions.append(fa_ds2)
 
     def _get_zoom_actions(self, inward_direction=True):
         num_frames = self.half_animation_num_frames
         num_frames_30p = int(round(num_frames * 0.3, 0))
+        num_frames_50p = int(round(num_frames * 0.5, 0))
         # --- mirror frames ---
         for phase_fas in [self.phase1_actions, self.phase2_actions]:
             fa_mirror = FramesActions(FramesActions.Type.mirror)
@@ -266,11 +280,12 @@ class AnimationActions:
         # --- distortion ---
         if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
             self._symmetric_action_value(self._polynomial_inv, FramesActions.Type.distortion, 0,
-                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_30p)
+                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_50p)
 
     def _get_translation_actions(self, left2right=True):
         num_frames = self.half_animation_num_frames
         num_frames_30p = int(round(num_frames * 0.3, 0))
+        num_frames_50p = int(round(num_frames * 0.5, 0))
         # --- mirror frames ---
         direction1, direction2 = FramesActions.MirrorDirection.right_1, FramesActions.MirrorDirection.left_1
         if not left2right:
@@ -306,11 +321,12 @@ class AnimationActions:
         # --- distortion ---
         if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
             self._symmetric_action_value(self._polynomial_inv, FramesActions.Type.distortion, 0,
-                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_30p)
+                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_50p)
 
     def _get_rotation_actions(self, clockwise=True):
         num_frames = self.half_animation_num_frames
         num_frames_30p = int(round(num_frames * 0.3, 0))
+        num_frames_50p = int(round(num_frames * 0.5, 0))
         # --- mirror frames ---
         for phase_fas in [self.phase1_actions, self.phase2_actions]:
             fa_mirror = FramesActions(FramesActions.Type.mirror)
@@ -319,11 +335,13 @@ class AnimationActions:
             phase_fas.append(fa_mirror)
         # --- rotation ---
         if _LIMITS["rotation"][0] < self.max_rotation <= _LIMITS["rotation"][1]:
-            mul = 1
-            if not clockwise:
-                mul = -1
-            self._symmetric_action_value(self._polynomial, FramesActions.Type.rotation, 0,
-                                         mul * self.max_rotation, num_frames, -1)
+            mul = 1 if clockwise else -1
+            fa1_rot, fa2_rot = FramesActions(FramesActions.Type.rotation), FramesActions(FramesActions.Type.rotation)
+            self._polynomial(fa1_rot, 0, - mul * self.max_rotation, num_frames)
+            self._polynomial_inv(fa2_rot, mul * self.max_rotation, 0, num_frames)
+            self.phase1_actions.append(fa1_rot)
+            self.phase2_actions.append(fa2_rot)
+
         # --- crop ---
         for phase_fas in [self.phase1_actions, self.phase2_actions]:
             fa_crop = FramesActions(FramesActions.Type.crop)
@@ -341,7 +359,7 @@ class AnimationActions:
         # --- distortion ---
         if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
             self._symmetric_action_value(self._polynomial_inv, FramesActions.Type.distortion, 0,
-                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_30p)
+                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_50p)
 
     def _symmetric_action_value(self, func, action_type, f_a, f_b, length,
                                 num_f_a_duplicates=0, num_f_b_duplicates=0, phase2_multiplier=1):
@@ -423,7 +441,7 @@ class AnimationActions:
         frame_action.function = FramesActions.Function.linear
 
     @staticmethod
-    def _polynomial(frame_action, f_a, f_b, length, strength=2.0):
+    def _polynomial(frame_action, f_a, f_b, length, strength=3.0):
         xa, xb = 0, length - 1
         c1 = (f_b - f_a) / ((xb - xa) ** strength)
         c2 = f_a
@@ -432,7 +450,7 @@ class AnimationActions:
         frame_action.function = FramesActions.Function.polynomial
 
     @staticmethod
-    def _polynomial_inv(frame_action, f_a, f_b, length, strength=2.0):
+    def _polynomial_inv(frame_action, f_a, f_b, length, strength=3.0):
         AnimationActions._polynomial(frame_action, f_a, f_b, length, 1 / strength)
         frame_action.function = FramesActions.Function.polynomial_inv
 
@@ -699,7 +717,6 @@ class DataHandler:
     def final_images_to_video(self, res_folders):
         output_videos = [self.phase1_vid, self.phase2_vid]
         fps = str(self.fps)
-        # fps = str(3)  # TODO remove later
         for idx in range(2):
             log_info(f"merging phase_{idx} images into a video ...")
             cmd = ["ffmpeg", "-hide_banner", "-framerate", fps, "-y", "-r", fps,  "-i",
@@ -927,6 +944,11 @@ if __name__ == "__main__":
 
         if not dh.final_images_to_video(final_phase_folder):
             exit(1)
+        if args.remove:
+            log_debug(f"remove original video1: {dh.input_vid1}")
+            dh.input_vid1.unlink()
+            log_debug(f"remove original video2: {dh.input_vid2}")
+            dh.input_vid2.unlink()
         log_info("")
         log_info((f" Transition finished. Duration = {dh.get_duration_msg()} ".center(80, "=")))
         log_info("")
