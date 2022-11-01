@@ -30,10 +30,11 @@ REMOVE_ORIGINAL = False
 _OUTPUT_VIDEO_TYPE = ".mp4"
 _OUTPUT_VIDEO_CODEC = "h264"
 _LIMITS = {"rotation": (5, 90), "brightness": (0.0, 2.0), "blur": (0.005, 1.0),
-           "distortion": (0.3, 1.0), "zoom": (0.5, 2.0)}
-_ANIMATION_HELP = """
+           "distortion": (0.3, 1.0), "zoom": (1.2, 2.0)}
+_ANIMATION_HELP = """  
     TODO later
 """
+# TODO write this
 
 
 def log_debug(msg):
@@ -54,12 +55,12 @@ def log_error(msg):
 
 def intro_print(in_art):
     """ Taken from https://patorjk.com/software/taag using 4MAX font"""
-    intro = """
-    Yb    dP          dP""b8  dP"Yb  8b    d8 88""Yb 88""Yb 888888 .dP"Y8 .dP"Y8 
-     Yb  dP          dP   `" dP   Yb 88b  d88 88__dP 88__dP 88__   `Ybo." `Ybo." 
-      YbdP   .o.     Yb      Yb   dP 88YbdP88 88\"""  88"Yb  88""   o.`Y8b o.`Y8b 
-       YP    `"'      YboodP  YbodP  88 YY 88 88     88  Yb 888888 8bodP' 8bodP' 
-    """
+    intro = '''
+    Yb    dP 88 8888b.      888888 88""Yb    db    88b 88 .dP"Y8 88 888888 
+     Yb  dP  88  8I  Yb       88   88__dP   dPYb   88Yb88 `Ybo." 88   88   
+      YbdP   88  8I  dY       88   88"Yb   dP__Yb  88 Y88 o.`Y8b 88   88   
+       YP    88 8888Y"        88   88  Yb dP""""Yb 88  Y8 8bodP' 88   88   
+    '''
     if in_art:
         log_info(intro)
     log_debug("=" * 80)
@@ -159,9 +160,113 @@ class AnimationActions:
             self._get_translation_actions(left2right=True)
         elif animation_type == Animations.translation_inv:
             self._get_translation_actions(left2right=False)
+        elif animation_type == Animations.zoom_in:
+            self._get_zoom_actions(inward_direction=True)
+        elif animation_type == Animations.zoom_out:
+            self._get_zoom_actions(inward_direction=False)
+        elif animation_type == Animations.long_translation:
+            self._get_long_translation_actions(left2right=True)
+        elif animation_type == Animations.long_translation_inv:
+            self._get_long_translation_actions(left2right=False)
 
         self._print_info(animation_type)
         return self.phase1_actions, self.phase2_actions
+
+    def _get_long_translation_actions(self, left2right=True):
+        num_frames1 = self.half_animation_num_frames
+        num_frames1_30p = int(round(num_frames1 * 0.3, 0))
+        num_frames2 = 2 * self.half_animation_num_frames
+        num_frames2_30p = int(round(num_frames2 * 0.3, 0))
+        # --- mirror frames ---
+        direction1, direction2 = FramesActions.MirrorDirection.right_1, FramesActions.MirrorDirection.left_3
+        if not left2right:
+            direction1, direction2 = FramesActions.MirrorDirection.left_1, FramesActions.MirrorDirection.right_3
+        fa_mirror1 = FramesActions(FramesActions.Type.mirror)
+        [fa_mirror1.values.append(direction1) for _ in range(num_frames1)]
+        self.phase1_actions.append(fa_mirror1)
+        fa_mirror2 = FramesActions(FramesActions.Type.mirror)
+        [fa_mirror2.values.append(direction2) for _ in range(num_frames2)]
+        self.phase2_actions.append(fa_mirror2)
+
+        # --- crop ---
+        crop_1_values, crop_2_values = (0, 1), (0, 2, 3)
+        if not left2right:
+            crop_1_values, crop_2_values = (1, 0), (3, 2, 0)
+        fa_crop1 = FramesActions(FramesActions.Type.crop)
+        self._polynomial(fa_crop1, crop_1_values[0], crop_1_values[1], num_frames1)
+        fa_crop1.values = [(v, 0) for v in fa_crop1.values]
+        self.phase1_actions.append(fa_crop1)
+
+        fa_crop2 = FramesActions(FramesActions.Type.crop)
+        self._linear(fa_crop2, crop_2_values[0], crop_2_values[1], num_frames1)
+        self._polynomial_inv(fa_crop2, crop_2_values[1], crop_2_values[2], num_frames1)
+        fa_crop2.values = [(v, 0) for v in fa_crop2.values]
+        self.phase2_actions.append(fa_crop2)
+
+        # --- brightness ---
+        if _LIMITS["brightness"][0] <= self.max_brightness <= _LIMITS["brightness"][1] and self.max_brightness != 1:
+            fa_br1, fa_br2 = FramesActions(FramesActions.Type.brightness), FramesActions(FramesActions.Type.brightness)
+            self._polynomial(fa_br1, 1.0, self.max_brightness, num_frames1)
+            fa_br2.values = [self.max_brightness for _ in range(num_frames1)]
+            self._polynomial_inv(fa_br2, self.max_brightness, 1.0, num_frames1)
+            self.phase1_actions.append(fa_br1)
+            self.phase2_actions.append(fa_br2)
+        # --- blur ---
+        if _LIMITS["blur"][0] < self.max_blur <= _LIMITS["blur"][1]:
+            fa_bl1, fa_bl2 = FramesActions(FramesActions.Type.blur), FramesActions(FramesActions.Type.blur)
+            fa_bl1.values = [0 for _ in range(num_frames1_30p)]
+            self._polynomial(fa_bl1, 0.0, self.max_blur, num_frames1 - num_frames1_30p)
+            self._polynomial(fa_bl2, self.max_blur, 0.0, num_frames2)
+            self.phase1_actions.append(fa_bl1)
+            self.phase2_actions.append(fa_bl2)
+        # --- distortion ---
+        if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
+            fa_ds1, fa_ds2 = FramesActions(FramesActions.Type.distortion), FramesActions(FramesActions.Type.distortion)
+            self._polynomial(fa_ds1, 0.0, self.max_distortion, num_frames1 - num_frames1_30p)
+            fa_ds1.values += [self.max_distortion for _ in range(num_frames1_30p)]
+            fa_ds2.values = [self.max_distortion for _ in range(num_frames1 + num_frames1_30p)]
+            self._polynomial(fa_ds2, self.max_distortion, 0.0, num_frames1 - num_frames1_30p)
+            self.phase1_actions.append(fa_ds1)
+            self.phase2_actions.append(fa_ds2)
+
+    def _get_zoom_actions(self, inward_direction=True):
+        num_frames = self.half_animation_num_frames
+        num_frames_30p = int(round(num_frames * 0.3, 0))
+        # --- mirror frames ---
+        for phase_fas in [self.phase1_actions, self.phase2_actions]:
+            fa_mirror = FramesActions(FramesActions.Type.mirror)
+            for _ in range(num_frames):
+                fa_mirror.values.append(FramesActions.MirrorDirection.all_directions_1)
+            phase_fas.append(fa_mirror)
+        # --- zoom ---
+        zoom_1v, zoom_2v = self.max_zoom, 1 / self.max_zoom
+        if not inward_direction:
+            zoom_1v, zoom_2v = zoom_2v, zoom_1v
+        if _LIMITS["zoom"][0] <= self.max_zoom <= _LIMITS["zoom"][1]:
+            fa_zoom1, fa_zoom2 = FramesActions(FramesActions.Type.zoom), FramesActions(FramesActions.Type.zoom)
+            self._polynomial(fa_zoom1, 1.0, zoom_1v, num_frames)
+            self.phase1_actions.append(fa_zoom1)
+            self._polynomial_inv(fa_zoom2, zoom_2v, 1.0, num_frames)
+            self.phase2_actions.append(fa_zoom2)
+        # --- crop ---
+        for phase_fas in [self.phase1_actions, self.phase2_actions]:
+            fa_crop = FramesActions(FramesActions.Type.crop)
+            for _ in range(num_frames):
+                fa_crop.values.append((1, 1))
+            phase_fas.append(fa_crop)
+        # --- brightness ---
+        if _LIMITS["brightness"][0] <= self.max_brightness <= _LIMITS["brightness"][1] and self.max_brightness != 1:
+            self._symmetric_action_value(self._linear, FramesActions.Type.brightness, 1,
+                                         self.max_brightness, num_frames)
+
+        # --- blur ---
+        if _LIMITS["blur"][0] < self.max_blur <= _LIMITS["blur"][1]:
+            self._symmetric_action_value(self._polynomial, FramesActions.Type.blur, 0,
+                                         self.max_blur, num_frames, num_f_a_duplicates=num_frames_30p)
+        # --- distortion ---
+        if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
+            self._symmetric_action_value(self._polynomial_inv, FramesActions.Type.distortion, 0,
+                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_30p)
 
     def _get_translation_actions(self, left2right=True):
         num_frames = self.half_animation_num_frames
@@ -225,7 +330,6 @@ class AnimationActions:
             for _ in range(num_frames):
                 fa_crop.values.append((1, 1))
             phase_fas.append(fa_crop)
-        fa_crop = FramesActions(FramesActions.Type.crop)
         # --- brightness ---
         if _LIMITS["brightness"][0] <= self.max_brightness <= _LIMITS["brightness"][1] and self.max_brightness != 1:
             self._symmetric_action_value(self._linear, FramesActions.Type.brightness, 1,
@@ -428,7 +532,6 @@ class AnimationImages:
                 log_debug(f" image [{img_idx+1}/{len(images_path[phase_idx])}] processing ".center(80, "-"))
                 log_debug(f"image path {img_path}")
                 for action_idx, action in enumerate(actions):
-
                     suffix = action.action_type.name
                     if action_idx == len(actions) - 1:
                         suffix += "_final"
@@ -505,7 +608,10 @@ class AnimationImages:
         w, h = in_img.size
         zoom2 = zoom_value * 2
         new_img = in_img.crop((w/2 - w / zoom2, h/2 - h / zoom2, w/2 + w / zoom2, h/2 + h / zoom2))
-        return new_img.resize((w, h), Image.Resampling.BICUBIC)
+        try:
+            return new_img.resize((w, h), Image.Resampling.BICUBIC)
+        except AttributeError:
+            return new_img.resize((w, h), Image.BICUBIC)
 
     @staticmethod
     def crop_effect(in_img, top_left_corner, original_img_size):
@@ -592,8 +698,8 @@ class DataHandler:
 
     def final_images_to_video(self, res_folders):
         output_videos = [self.phase1_vid, self.phase2_vid]
-        # fps = str(self.fps)
-        fps = str(3)  # TODO remove later
+        fps = str(self.fps)
+        # fps = str(3)  # TODO remove later
         for idx in range(2):
             log_info(f"merging phase_{idx} images into a video ...")
             cmd = ["ffmpeg", "-hide_banner", "-framerate", fps, "-y", "-r", fps,  "-i",
@@ -826,20 +932,3 @@ if __name__ == "__main__":
         log_info("")
         end_print(args.art)
     exit(0)
-
-    home = pathlib.Path().home()
-    for i in [1, 2, 3, 4]:
-        image = Image.open(str(home / f'pic{i}_a.jpg'))
-        # result_image = AnimationImages.distortion_effect(image, 0.7)
-        result_image = AnimationImages.brightness_effect(image, 1.7)
-        # result_image = AnimationImages.blur_effect(image, 0.2)
-        # result_image = AnimationImages.rotation_effect(image, 45)
-        # result_image = AnimationImages.mirror_image_effect(image, FramesActions.MirrorDirection.right_3)
-        # result_image = AnimationImages.zoom_effect(image, 0.7)
-
-        # result_image = AnimationImages.mirror_image_effect(image, FramesActions.MirrorDirection.all_directions_1)
-        # result_image = AnimationImages.rotation_effect(result_image, 60)
-        # result_image = AnimationImages.crop_effect(result_image, (1, 1), image.size)
-
-        print(f"finished {i}")
-        result_image.save(str(home / f'pic{i}_b.jpg'))
