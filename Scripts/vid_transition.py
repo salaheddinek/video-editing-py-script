@@ -31,6 +31,9 @@ _OUTPUT_VIDEO_TYPE = ".mp4"
 _OUTPUT_VIDEO_CODEC = "h264"
 _LIMITS = {"rotation": (5, 90), "brightness": (0.0, 2.0), "blur": (0.005, 1.0),
            "distortion": (0.3, 1.0), "zoom": (0.5, 2.0)}
+_ANIMATION_HELP = """
+    TODO later
+"""
 
 
 def log_debug(msg):
@@ -149,93 +152,113 @@ class AnimationActions:
 
     def get_actions_values(self, animation_type):
         if animation_type == Animations.rotation:
-            self._get_rotation_phase1_actions(clockwise=True)
-            self._get_rotation_phase2_actions(clockwise=True)
+            self._get_rotation_actions(clockwise=True)
+        elif animation_type == Animations.rotation_inv:
+            self._get_rotation_actions(clockwise=False)
+        elif animation_type == Animations.translation:
+            self._get_translation_actions(left2right=True)
+        elif animation_type == Animations.translation_inv:
+            self._get_translation_actions(left2right=False)
 
         self._print_info(animation_type)
         return self.phase1_actions, self.phase2_actions
 
-    def _get_rotation_phase1_actions(self, clockwise=True):
+    def _get_translation_actions(self, left2right=True):
         num_frames = self.half_animation_num_frames
         num_frames_30p = int(round(num_frames * 0.3, 0))
-        num_frames_70p = num_frames - num_frames_30p
         # --- mirror frames ---
-        fa_mirror = FramesActions(FramesActions.Type.mirror)
-        for _ in range(num_frames):
-            fa_mirror.values.append(FramesActions.MirrorDirection.all_directions_1)
-        self.phase1_actions.append(fa_mirror)
-        # --- rotation ---
-        if _LIMITS["rotation"][0] < self.max_rotation <= _LIMITS["rotation"][1]:
-            fa_rot = FramesActions(FramesActions.Type.rotation)
-            mul = 1
-            if not clockwise:
-                mul = -1
-            # [fa_rot.values.append(0) for _ in range(num_frames_30p)]
-            self._polynomial(fa_rot, 0, mul * self.max_rotation, num_frames)
-            self.phase1_actions.append(fa_rot)
-        # --- crop ---
-        fa_crop = FramesActions(FramesActions.Type.crop)
-        for _ in range(num_frames):
-            fa_crop.values.append((1, 1, 2, 2))
-        self.phase1_actions.append(fa_crop)
-        # --- brightness ---
-        if _LIMITS["brightness"][0] <= self.max_brightness <= _LIMITS["brightness"][1] and self.max_brightness != 1:
-            fa_brightness = FramesActions(FramesActions.Type.brightness)
-            self._linear(fa_brightness, 0, self.max_blur, num_frames)
-            self.phase1_actions.append(fa_brightness)
-        # --- blur ---
-        if _LIMITS["blur"][0] < self.max_blur <= _LIMITS["blur"][1]:
-            fa_blur = FramesActions(FramesActions.Type.blur)
-            [fa_blur.values.append(0) for _ in range(num_frames_30p)]
-            self._polynomial(fa_blur, 0, self.max_blur, num_frames_70p)
-            self.phase1_actions.append(fa_blur)
-        # --- distortion ---
-        if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
-            fa_distortion = FramesActions(FramesActions.Type.distortion)
-            self._linear(fa_distortion, 0, self.max_distortion, num_frames_70p)
-            [fa_distortion.values.append(self.max_distortion) for _ in range(num_frames_30p)]
-            self.phase1_actions.append(fa_distortion)
+        direction1, direction2 = FramesActions.MirrorDirection.right_1, FramesActions.MirrorDirection.left_1
+        if not left2right:
+            direction1, direction2 = direction2, direction1
+        fa_mirror1 = FramesActions(FramesActions.Type.mirror)
+        [fa_mirror1.values.append(direction1) for _ in range(num_frames)]
+        self.phase1_actions.append(fa_mirror1)
+        fa_mirror2 = FramesActions(FramesActions.Type.mirror)
+        [fa_mirror2.values.append(direction2) for _ in range(num_frames)]
+        self.phase2_actions.append(fa_mirror2)
 
-    def _get_rotation_phase2_actions(self, clockwise=True):
+        # --- crop ---
+        crop_f_a, crop_f_b = 0, 1
+        if not left2right:
+            crop_f_a, crop_f_b = 1, 0
+        fa_crop1 = FramesActions(FramesActions.Type.crop)
+        self._polynomial(fa_crop1, crop_f_a, crop_f_b, num_frames)
+        fa_crop1.values = [(v, 0) for v in fa_crop1.values]
+        self.phase1_actions.append(fa_crop1)
+        fa_crop2 = FramesActions(FramesActions.Type.crop)
+        self._polynomial_inv(fa_crop2, crop_f_a, crop_f_b, num_frames)
+        fa_crop2.values = [(v, 0) for v in fa_crop2.values]
+        self.phase2_actions.append(fa_crop2)
+
+        # --- brightness ---
+        if _LIMITS["brightness"][0] <= self.max_brightness <= _LIMITS["brightness"][1] and self.max_brightness != 1:
+            self._symmetric_action_value(self._linear, FramesActions.Type.brightness, 1,
+                                         self.max_brightness, num_frames)
+        # --- blur ---
+        if _LIMITS["blur"][0] < self.max_blur <= _LIMITS["blur"][1]:
+            self._symmetric_action_value(self._polynomial, FramesActions.Type.blur, 0,
+                                         self.max_blur, num_frames, num_f_a_duplicates=num_frames_30p)
+        # --- distortion ---
+        if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
+            self._symmetric_action_value(self._polynomial_inv, FramesActions.Type.distortion, 0,
+                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_30p)
+
+    def _get_rotation_actions(self, clockwise=True):
         num_frames = self.half_animation_num_frames
         num_frames_30p = int(round(num_frames * 0.3, 0))
-        num_frames_70p = num_frames - num_frames_30p
         # --- mirror frames ---
-        fa_mirror = FramesActions(FramesActions.Type.mirror)
-        for _ in range(num_frames):
-            fa_mirror.values.append(FramesActions.MirrorDirection.all_directions_1)
-        self.phase2_actions.append(fa_mirror)
+        for phase_fas in [self.phase1_actions, self.phase2_actions]:
+            fa_mirror = FramesActions(FramesActions.Type.mirror)
+            for _ in range(num_frames):
+                fa_mirror.values.append(FramesActions.MirrorDirection.all_directions_1)
+            phase_fas.append(fa_mirror)
         # --- rotation ---
         if _LIMITS["rotation"][0] < self.max_rotation <= _LIMITS["rotation"][1]:
-            fa_rot = FramesActions(FramesActions.Type.rotation)
             mul = 1
             if not clockwise:
                 mul = -1
-            self._polynomial_inv(fa_rot, - mul * self.max_rotation, 0, num_frames)
-            # [fa_rot.values.append(0) for _ in range(num_frames_30p)]
-            self.phase2_actions.append(fa_rot)
+            self._symmetric_action_value(self._polynomial, FramesActions.Type.rotation, 0,
+                                         mul * self.max_rotation, num_frames, -1)
         # --- crop ---
+        for phase_fas in [self.phase1_actions, self.phase2_actions]:
+            fa_crop = FramesActions(FramesActions.Type.crop)
+            for _ in range(num_frames):
+                fa_crop.values.append((1, 1))
+            phase_fas.append(fa_crop)
         fa_crop = FramesActions(FramesActions.Type.crop)
-        for _ in range(num_frames):
-            fa_crop.values.append((1, 1))
-        self.phase2_actions.append(fa_crop)
         # --- brightness ---
         if _LIMITS["brightness"][0] <= self.max_brightness <= _LIMITS["brightness"][1] and self.max_brightness != 1:
-            fa_brightness = FramesActions(FramesActions.Type.brightness)
-            self._linear(fa_brightness, self.max_blur, 0, num_frames)
-            self.phase1_actions.append(fa_brightness)
+            self._symmetric_action_value(self._linear, FramesActions.Type.brightness, 1,
+                                         self.max_brightness, num_frames)
         # --- blur ---
         if _LIMITS["blur"][0] < self.max_blur <= _LIMITS["blur"][1]:
-            fa_blur = FramesActions(FramesActions.Type.blur)
-            self._polynomial(fa_blur, self.max_blur, 0, num_frames_70p)
-            [fa_blur.values.append(0) for _ in range(num_frames_30p)]
-            self.phase2_actions.append(fa_blur)
+            self._symmetric_action_value(self._polynomial, FramesActions.Type.blur, 0,
+                                         self.max_blur, num_frames, num_f_a_duplicates=num_frames_30p)
         # --- distortion ---
         if _LIMITS["distortion"][0] < self.max_distortion <= _LIMITS["distortion"][1]:
-            fa_distortion = FramesActions(FramesActions.Type.distortion)
-            [fa_distortion.values.append(self.max_distortion) for _ in range(num_frames_30p)]
-            self._linear(fa_distortion, self.max_distortion, 0, num_frames_70p)
-            self.phase2_actions.append(fa_distortion)
+            self._symmetric_action_value(self._polynomial_inv, FramesActions.Type.distortion, 0,
+                                         self.max_distortion, num_frames, num_f_b_duplicates=num_frames_30p)
+
+    def _symmetric_action_value(self, func, action_type, f_a, f_b, length,
+                                num_f_a_duplicates=0, num_f_b_duplicates=0, phase2_multiplier=1):
+        p2m = phase2_multiplier
+        phase1_fa = FramesActions(action_type)
+        phase2_fa = FramesActions(action_type)
+        [phase1_fa.values.append(f_a) for _ in range(num_f_a_duplicates)]
+        [phase2_fa.values.append(f_b * p2m) for _ in range(num_f_b_duplicates)]
+        func(phase1_fa, f_a, f_b, length - num_f_a_duplicates - num_f_b_duplicates)
+        if phase1_fa.function == FramesActions.Function.linear:
+            self._linear(phase2_fa, f_b * p2m, f_a * p2m, length - num_f_a_duplicates - num_f_b_duplicates)
+        elif phase1_fa.function == FramesActions.Function.polynomial:
+            self._polynomial_inv(phase2_fa, f_b * p2m, f_a * p2m, length - num_f_a_duplicates - num_f_b_duplicates)
+        elif phase1_fa.function == FramesActions.Function.polynomial_inv:
+            self._polynomial(phase2_fa, f_b * p2m, f_a * p2m, length - num_f_a_duplicates - num_f_b_duplicates)
+        else:
+            log_error("this should never happens")
+        [phase1_fa.values.append(f_b) for _ in range(num_f_b_duplicates)]
+        [phase2_fa.values.append(f_a * p2m) for _ in range(num_f_a_duplicates)]
+        self.phase1_actions.append(phase1_fa)
+        self.phase2_actions.append(phase2_fa)
 
     def _print_info(self, animation_type):
         log_info("")
@@ -351,7 +374,6 @@ class AnimationImages:
                 r = math.sqrt(min(self.half_height, self.half_width) ** 2) / self.correction_radius
                 self.zoom = r / math.atan(r)
 
-        # TODO use log instead of print
         def get_debug_info(self, img):
             self.determine_parameters(img)
             w, h = img.size
@@ -392,11 +414,12 @@ class AnimationImages:
         log_debug("".center(80, "="))
         images_path = [in_images1, in_images2]
         res_folder = [None, None]
-
+        peak_distortion_msg = []
+        peak_distortion_value = 0.0
+        peak_distortion_img = None
         for phase_idx, actions in enumerate([in_actions1, in_actions2]):
             log_debug("=" * 80)
             log_info(f"processing transition phase_{phase_idx+1} images")
-
             for img_idx, img_path in enumerate(images_path[phase_idx]):
                 if not debug:
                     progress(img_idx, len(images_path[phase_idx]), f"phase_{phase_idx+1} images")
@@ -433,12 +456,20 @@ class AnimationImages:
                         img = AnimationImages.blur_effect(img, value)
                     elif action.action_type == FramesActions.Type.distortion:
                         img = AnimationImages.distortion_effect(img, value)
+                        if value > peak_distortion_value:
+                            peak_distortion_msg = AnimationImages.PincushionDeformation(value, 1.0).get_debug_info(img)
+                            peak_distortion_value = value
+                            peak_distortion_img = img_path
                     elif action.action_type == FramesActions.Type.brightness:
                         img = AnimationImages.brightness_effect(img, value)
                     if debug or action_idx == len(actions) - 1:
                         img.save(str(img_save_folder / img_path.name))
 
                 log_debug("")
+        if peak_distortion_img is not None:
+            log_debug(f"peak distortion effect: value [{peak_distortion_value}:.1%], img path: [{peak_distortion_img}]")
+            for line in peak_distortion_msg:
+                log_debug(line)
         return res_folder
 
     @staticmethod
@@ -507,6 +538,8 @@ class DataHandler:
         self.start_time = datetime.datetime.now()
         self.tmp_path = None
         self.output = None
+        self.input_vid1 = None
+        self.input_vid2 = None
         self.phase1_vid = None
         self.phase2_vid = None
         self.fps = 30
@@ -520,7 +553,7 @@ class DataHandler:
         self.tmp_path = in_tmp_path
         self.output = pathlib.Path(in_args.output)
         if in_args.output == "":
-            self._suggest_output()
+            self._suggest_output(in_args.output)
         if in_args.debug:
             self.tmp_path = self.output.parent / (self.output.stem + "_debug")
             if self.tmp_path.is_dir():
@@ -531,12 +564,11 @@ class DataHandler:
         intro_print(in_args.art)
         if not self._verify_critical_info(in_args):
             return False
-        in_vid1 = pathlib.Path(in_args.input[0])
-        in_vid2 = pathlib.Path(in_args.input[1])
+
         self.phase1_vid = self.output.parent / (self.output.stem + "_phase1" + _OUTPUT_VIDEO_TYPE)
         self.phase2_vid = self.output.parent / (self.output.stem + "_phase2" + _OUTPUT_VIDEO_TYPE)
-        log_info(f"first input video: {in_vid1}")
-        log_info(f"second input video: {in_vid2}")
+        log_info(f"first input video: {self.input_vid1}")
+        log_info(f"second input video: {self.input_vid2}")
         log_info(f"output animation phase1 video: {self.phase1_vid}")
         log_info(f"output animation phase2 video: {self.phase2_vid}")
         self._get_fps_from_video()
@@ -548,23 +580,24 @@ class DataHandler:
         log_debug(f"created vid1_raw_images_folder: {self.vid1_raw_images_folder}")
         self.vid2_raw_images_folder.mkdir()
         log_debug(f"created vid2_raw_images_folder: {self.vid2_raw_images_folder}")
-        if not self._extract_phase1_images(in_args.num_frames, in_vid1):
+        if not self._extract_phase1_images(in_args.num_frames):
             return False
         num_frames_for_vid2 = in_args.num_frames
         if self.animation == Animations.long_translation or self.animation == Animations.long_translation_inv:
             num_frames_for_vid2 = 2 * in_args.num_frames
-        if not self._extract_phase2_images(num_frames_for_vid2, in_vid2):
+        if not self._extract_phase2_images(num_frames_for_vid2):
             return False
         log_info(f"number of frames for phase1: [{len(self.phase1_images)}], for phase2: [{len(self.phase2_images)}]")
         return True
 
     def final_images_to_video(self, res_folders):
-        # images_speeds = [(float(len(self.phase1_images)) / (int_duration))]
         output_videos = [self.phase1_vid, self.phase2_vid]
+        # fps = str(self.fps)
+        fps = str(3)  # TODO remove later
         for idx in range(2):
             log_info(f"merging phase_{idx} images into a video ...")
-            cmd = ["ffmpeg", "-hide_banner", "-framerate", str(self.fps), "-y", "-r", f"{self.fps}",  "-i",
-                   str(res_folders[idx] / "%04d.png"), "-r", str(self.fps), "-vcodec", _OUTPUT_VIDEO_CODEC,
+            cmd = ["ffmpeg", "-hide_banner", "-framerate", fps, "-y", "-r", fps,  "-i",
+                   str(res_folders[idx] / "%04d.png"), "-r", fps, "-vcodec", _OUTPUT_VIDEO_CODEC,
                    str(output_videos[idx])]
             self._exec_command(cmd, f"command used for merging phase_{idx} images into a video ...")
             if not output_videos[idx].is_file():
@@ -574,13 +607,6 @@ class DataHandler:
         log_info(f"output animation phase2 video: {self.phase2_vid}")
         return True
 
-    @staticmethod
-    def get_animation_help():  # TODO complete me
-        msg = """
-        TODO later
-        """
-        return msg
-
     def _verify_critical_info(self, in_args):
         if shutil.which("ffmpeg") is None:
             log_error("'ffmpeg' is not installed, please install it before use")
@@ -588,13 +614,13 @@ class DataHandler:
         if len(in_args.input) < 2 or len(in_args.input) > 2:
             log_error(f"2 input videos needed, [{len(in_args.input)}] provided")
             return False
-        in_vid1 = pathlib.Path(in_args.input[0])
-        if not in_vid1.is_file():
-            log_error(f"could not find first video under: {in_vid1}")
+        self.input_vid1 = pathlib.Path(in_args.input[0])
+        if not self.input_vid1.is_file():
+            log_error(f"could not find first video under: {self.input_vid1}")
             return False
-        in_vid2 = pathlib.Path(in_args.input[1])
-        if not in_vid2.is_file():
-            log_error(f"could not find second video under: {in_vid2}")
+        self.input_vid2 = pathlib.Path(in_args.input[1])
+        if not self.input_vid2.is_file():
+            log_error(f"could not find second video under: {self.input_vid2}")
             return False
         if in_args.num_frames < 2 or in_args.num_frames > 100:
             log_error(f"number of frames per phase should be in the range [2, 100] (provided: [{in_args.num_frames}])")
@@ -607,13 +633,13 @@ class DataHandler:
         if self.animation is None:
             log_error(f"animation provided [{in_args.animation}] not recognized, please use one of the "
                       f"following animations:")
-            log_info(self.get_animation_help())
+            log_info(_ANIMATION_HELP)
             return False
         return True
 
-    def _extract_phase1_images(self, in_num_frames, in_vid_1):
+    def _extract_phase1_images(self, in_num_frames):
         duration_ms = int(math.ceil(1000 * (in_num_frames + 2) / self.fps))
-        cmd = ["ffmpeg", "-hide_banner", "-sseof", f"-{duration_ms}ms", "-i", str(in_vid_1),
+        cmd = ["ffmpeg", "-hide_banner", "-sseof", f"-{duration_ms}ms", "-i", str(self.input_vid1),
                str(self.vid1_raw_images_folder / "%04d.png")]
         self._exec_command(cmd, "command used for extracting images from video num 1:")
         for img_f in self.vid1_raw_images_folder.glob("*.png"):
@@ -627,9 +653,9 @@ class DataHandler:
             self.phase1_images = self.phase1_images[-in_num_frames:]
         return True
 
-    def _extract_phase2_images(self, in_num_frames, in_vid_2):
+    def _extract_phase2_images(self, in_num_frames):
         duration_ms = int(math.ceil(1000 * (in_num_frames + 2) / self.fps))
-        cmd = ["ffmpeg", "-hide_banner", "-to", f"{duration_ms}ms", "-i", str(in_vid_2),
+        cmd = ["ffmpeg", "-hide_banner", "-to", f"{duration_ms}ms", "-i", str(self.input_vid2),
                str(self.vid2_raw_images_folder / "%04d.png")]
         self._exec_command(cmd, "command used for extracting images from video num 2:")
         for img_f in self.vid2_raw_images_folder.glob("*.png"):
@@ -661,9 +687,25 @@ class DataHandler:
         log_debug(res.stderr)
         log_debug("")
         log_debug("")
+        return res.stdout, res.stderr
 
-    # TODO: fps extraction
     def _get_fps_from_video(self):
+        cmd = ["ffmpeg", "-hide_banner", "-i", str(self.input_vid1)]
+        stdout, stderr = self._exec_command(cmd, "command used for extracting FPS")
+        res = (stdout.lower() + " " + stderr.lower()).split(" ")
+        log_debug("searching for FPS value in ffmpeg video information")
+        for fps_word in ["fps", "fps,"]:
+            for idx, word in enumerate(res):
+                if word == fps_word:
+                    try:
+                        self.fps = int(res[idx - 1])
+                        log_debug(f"FPS extracted from video [{self.fps}]")
+                        return
+                    except ValueError:
+                        log_debug(f"failed extract FPS, value [{res[idx - 1]}], error :[{ValueError}]")
+
+        log_warning(f"cloud not retrieve FPS value from video (using ffmpeg): {self.input_vid1}")
+        log_warning("falling back to FPS value of [30]")
         self.fps = 30
 
     def get_duration_msg(self):
@@ -682,8 +724,23 @@ class DataHandler:
         else:
             return '%d s' % (seconds,)
 
-    def _suggest_output(self):  # TODO
-        self.output = pathlib.Path().cwd() / "vt1"
+    def _suggest_output(self, in_output):
+        # self.output = pathlib.Path().cwd() / "vt_debug"
+        # return
+        if in_output != "":
+            out_path = pathlib.Path(in_output)
+            self.output = out_path.parent / out_path.stem
+            return
+        cur_dir = pathlib.Path().cwd()
+        video_files = [f.name for f in cur_dir.glob("*" + _OUTPUT_VIDEO_TYPE)]
+        num = 1
+        previous_num = 0
+        while previous_num != num:
+            previous_num = num
+            for vn in video_files:
+                if vn.startswith(f"vt{num}_"):
+                    num += 1
+        self.output = cur_dir / f"vt{num}"
 
     @staticmethod
     def _setup_logging(debug, log_file_path):
@@ -745,7 +802,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.animation.lower() == "help":
-        print(DataHandler.get_animation_help())
+        print(_ANIMATION_HELP)
         exit(0)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -759,7 +816,6 @@ if __name__ == "__main__":
 
         phase1_actions, phase2_actions = actions_determinator.get_actions_values(dh.animation)
 
-        # quit()
         final_phase_folder = AnimationImages.make_transition(dh.tmp_path, dh.phase1_images, dh.phase2_images,
                                                              phase1_actions, phase2_actions, args.debug)
 
