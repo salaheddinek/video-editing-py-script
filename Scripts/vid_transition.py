@@ -24,6 +24,7 @@ MAX_ZOOM = 2.0
 DEBUG = False
 ART = True
 REMOVE_ORIGINAL = False
+# MERGE_PHASES = True
 
 
 # variable that cannot be changed by arg-parser
@@ -887,6 +888,17 @@ class DataHandler:
             init_logger.addHandler(handler)
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
+    
+    
 if __name__ == "__main__":
     all_animation_names = ", ".join([animation_enum.name for animation_enum in Animations])
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -920,11 +932,12 @@ if __name__ == "__main__":
                         type=float, default=MAX_ZOOM, metavar='\b')
     parser.add_argument('-g', '--debug', help='this will show more info, will create a logs file, '
                                               'and will create a folder which contains animation images',
-                        type=bool, default=DEBUG, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-t', '--art', help='Display ASCII art', type=bool,
-                        default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
+                        type=str2bool, default=DEBUG, metavar='\b')
+    parser.add_argument('-t', '--art', help='Display ASCII art', type=str2bool, default=ART, metavar='\b')
     parser.add_argument('-m', '--remove', help='delete original videos after a successful animation creation',
-                        type=bool, default=REMOVE_ORIGINAL, metavar='\b', action=argparse.BooleanOptionalAction)
+                        type=str2bool, default=REMOVE_ORIGINAL, metavar='\b') # TODO: add merge args
+    # parser.add_argument('-m', '--remove', help='delete original videos after a successful animation creation',
+    #                     type=str2bool, default=MERGE_PHASES, metavar='\b')
     args = parser.parse_args()
 
     if args.animation.lower() == "help":
