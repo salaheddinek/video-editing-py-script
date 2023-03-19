@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-__version__ = "1.4.1"
+__version__ = "1.4.2"
 
 import curses
 import os
