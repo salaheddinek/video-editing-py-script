@@ -183,6 +183,17 @@ def parse_color(in_c: str):
     return res[0], res[1], res[2], 255
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description='Create a text typing animation video with a transparent background.'
@@ -202,14 +213,13 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', help='ffmpeg verbose level: error, warning or info', type=str,
                         default=FFMPEG_VERBOSE, metavar='\b')
     parser.add_argument('-n', '--antialiasing', help='activate anti aliasing but with longer processing time',
-                        type=bool, default=ANTIALIASING, metavar='\b', action=argparse.BooleanOptionalAction)
+                        type=str2bool, default=ANTIALIASING, metavar='\b')
     parser.add_argument('-c', '--color', help='text font color', type=str,  default=TEXT_COLOR, metavar='\b')
     parser.add_argument('-j', '--justify', help='justify (align) text to left, right, center', type=str, metavar='\b',
                         default=JUSTIFY)
     parser.add_argument('-o', '--output', help='output video path. (without extension)', type=str, metavar='\b',
                         default="text_animation")
-    parser.add_argument('-a', '--art', help='Display ASCII art', type=bool,
-                        default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
+    parser.add_argument('-a', '--art', help='Display ASCII art', type=str2bool, default=ART, metavar='\b')
     args = parser.parse_args()
 
     if shutil.which("ffmpeg") is None:

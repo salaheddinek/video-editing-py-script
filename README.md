@@ -97,7 +97,7 @@ also provides multiple options in order to change the resulting videos like dime
 example:
 
 ```
-vid_compress.py --fps 25 --scale 720 --keep --rm_audio -i birds.mp4
+vid_compress.py --fps 25 --scale 720 --keep yes --rm_audio yes -i birds.mp4
 ```
 
 This command will take 'birds.mp4' video as an input and compress it,
@@ -149,7 +149,7 @@ Generate simple shape in the form of SVG file.
 For example:
 
 ```
-simple_svg.py --color "#00cc99" --size 600 400 --shape elliple --thickness 15
+simple_svg.py --color "#00cc99" --size 600 400 --shape ellipse --thickness 15
 ```
 
 This command will produce an SVG file with an ellipse drawn in the center,
@@ -167,7 +167,7 @@ Create a line animation video from a SVG file, the supported shapes are: path, e
 For example:
 
 ```
-svg_animator.py --input ellipse.svg -c 0,204,153 -w 13 -t --num_frames 150 --fps 30
+svg_animator.py --input ellipse.svg -c 0,204,153 -w 13 -t y --num_frames 150 --fps 30
 ```
 This command will take the 'ellipse.svg' file as an input.
 And it will produce a video of 5 seconds (150 number_of_frames / 30 FPS = 5 seconds).
@@ -182,7 +182,7 @@ Transforms files to text and vise-versa. Useful to embed images inside code, for
 For example:
 
 ```
-file2txt.py -i flower_icon.png -p
+file2txt.py -i flower_icon.png -p y
 ```
 
 This will transform 'flower_icon.png' into a text that you can embed in your program.
@@ -197,7 +197,7 @@ Converts videos to GIFs. Multiple optimization option are provided.
 For example:
 
 ```
-vid2gif.py -i birds.mp3 -f 12 -s 300
+vid2gif.py -i birds.mp4 -f 12 -s 300
 ```
 
 This command will take the birds.mp3 video and transform it to a GIF with 12 frames per second,
@@ -217,7 +217,7 @@ On Linux, providing the name of the font is sufficient
 For example:
 
 ```
-text_animator.py -i "computer can also type" --length 3 --antialiasing -c 255,0,0 --text_bbox 550 300
+text_animator.py -i "computer can also type" --length 3 --antialiasing true -c 255,0,0 --text_bbox 550 300
 ```
 
 This command will produce a video with a transparent background of 3 seconds length.

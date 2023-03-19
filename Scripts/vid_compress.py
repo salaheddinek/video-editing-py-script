@@ -171,6 +171,17 @@ def compress_one_video(in_input, in_output, in_fps, in_scale, in_verbose, in_cod
     return in_input.stat().st_size, out_size
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -190,14 +201,12 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--codec', help='codec used by ffmpeg, some possible value: h264, vp9, etc '
                                               '(type "--codec help" for more info)',
                         type=str, default=FFMPEG_CODEC, metavar='\b')
-    parser.add_argument('-a', '--art', help='Display ASCII art', type=bool,
-                        default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-k', '--keep', help='keep original videos', type=bool, default=KEEP_ORIGINAL,
-                        metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-r', '--rm_video', help='remove the video stream and only keep audio', type=bool,
-                        default=REMOVE_VIDEO, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-d', '--rm_audio', help='remove the audio and only keep video', type=bool,
-                        default=REMOVE_AUDIO, metavar='\b', action=argparse.BooleanOptionalAction)
+    parser.add_argument('-a', '--art', help='Display ASCII art', type=str2bool,  default=ART, metavar='\b')
+    parser.add_argument('-k', '--keep', help='keep original videos', type=str2bool, default=KEEP_ORIGINAL, metavar='\b')
+    parser.add_argument('-r', '--rm_video', help='remove the video stream and only keep audio', type=str2bool,
+                        default=REMOVE_VIDEO, metavar='\b')
+    parser.add_argument('-d', '--rm_audio', help='remove the audio and only keep video', type=str2bool,
+                        default=REMOVE_AUDIO, metavar='\b')
 
     args = parser.parse_args()
 
