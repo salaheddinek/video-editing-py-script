@@ -24,7 +24,7 @@ MAX_ZOOM = 2.0
 DEBUG = False
 ART = True
 REMOVE_ORIGINAL = False
-# MERGE_PHASES = True
+MERGE_PHASES = False
 
 
 # variable that cannot be changed by arg-parser
@@ -667,6 +667,7 @@ class DataHandler:
         self.input_vid2 = None
         self.phase1_vid = None
         self.phase2_vid = None
+        self.merged_vid = None
         self.fps = 30
         self.vid1_raw_images_folder = None
         self.vid2_raw_images_folder = None
@@ -692,10 +693,16 @@ class DataHandler:
 
         self.phase1_vid = self.output.parent / (self.output.stem + "_phase1" + _OUTPUT_VIDEO_TYPE)
         self.phase2_vid = self.output.parent / (self.output.stem + "_phase2" + _OUTPUT_VIDEO_TYPE)
+        self.merged_vid = self.output.parent / (self.output.stem + "_merged" + _OUTPUT_VIDEO_TYPE)
         log_info(f"first input video: {self.input_vid1}")
         log_info(f"second input video: {self.input_vid2}")
-        log_info(f"output animation phase1 video: {self.phase1_vid}")
-        log_info(f"output animation phase2 video: {self.phase2_vid}")
+        if in_args.merge:
+            log_debug(f"transition phase1 video: {self.phase1_vid}")
+            log_debug(f"transition phase2 video: {self.phase2_vid}")
+            log_info(f"output transition merged video: {self.merged_vid}")
+        else:
+            log_info(f"output transition phase1 video: {self.phase1_vid}")
+            log_info(f"output transition phase2 video: {self.phase2_vid}")
         self._get_fps_from_video()
         log_info(f"frames per second (FPS): {self.fps}")
 
@@ -730,8 +737,6 @@ class DataHandler:
             if not output_videos[idx].is_file():
                 log_error(f"ffmpeg failed to convert images to: {output_videos[idx]}")
                 return False
-        log_info(f"output animation phase1 video: {self.phase1_vid}")
-        log_info(f"output animation phase2 video: {self.phase2_vid}")
         return True
 
     def _verify_critical_info(self, in_args):
@@ -869,6 +874,22 @@ class DataHandler:
                     num += 1
         self.output = cur_dir / f"vt{num}"
 
+    def merge_video_chunks(self):  # TODO implement
+        log_info("merging the two phases video chunks into one transition video")
+        cmd = ["ffmpeg", "-hide_banner", "-i", str(self.phase1_vid), "-i",  str(self.phase2_vid),
+               "-filter_complex", "[0:v] [1:v] concat=n=2:v=1 [v]", "-map", "[v]", str(self.merged_vid)]
+        self._exec_command(cmd, f"command used for merging phase video chunks into the output video ...")
+
+        if not self.merged_vid.is_file():
+            log_error(f"ffmpeg failed to merge video phases into: {self.merged_vid}")
+            return False
+
+        log_debug(f"remove output video phase1: {self.phase1_vid}")
+        self.phase1_vid.unlink(missing_ok=True)
+        log_debug(f"remove output video phase2: {self.phase2_vid}")
+        self.phase2_vid.unlink(missing_ok=True)
+        return True
+
     @staticmethod
     def _setup_logging(debug, log_file_path):
         init_logger = logging.getLogger(__package__)
@@ -934,10 +955,10 @@ if __name__ == "__main__":
                                               'and will create a folder which contains animation images',
                         type=str2bool, default=DEBUG, metavar='\b')
     parser.add_argument('-t', '--art', help='Display ASCII art', type=str2bool, default=ART, metavar='\b')
-    parser.add_argument('-m', '--remove', help='delete original videos after a successful animation creation',
-                        type=str2bool, default=REMOVE_ORIGINAL, metavar='\b') # TODO: add merge args
-    # parser.add_argument('-m', '--remove', help='delete original videos after a successful animation creation',
-    #                     type=str2bool, default=MERGE_PHASES, metavar='\b')
+    parser.add_argument('-e', '--remove', help='delete original videos after a successful animation creation',
+                        type=str2bool, default=REMOVE_ORIGINAL, metavar='\b')
+    parser.add_argument('-m', '--merge', help='merge both phases video chunks into one transition video',
+                        type=str2bool, default=MERGE_PHASES, metavar='\b')
     args = parser.parse_args()
 
     if args.animation.lower() == "help":
@@ -960,6 +981,13 @@ if __name__ == "__main__":
 
         if not dh.final_images_to_video(final_phase_folder):
             exit(1)
+        if args.merge:
+            if not dh.merge_video_chunks():
+                exit(1)
+            log_info(f"output transition video: {dh.merged_vid}")
+        else:
+            log_info(f"output transition phase1 video: {dh.phase1_vid}")
+            log_info(f"output transition phase2 video: {dh.phase2_vid}")
         if args.remove:
             log_debug(f"remove original video1: {dh.input_vid1}")
             dh.input_vid1.unlink()
