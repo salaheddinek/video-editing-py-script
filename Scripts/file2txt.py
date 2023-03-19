@@ -93,6 +93,17 @@ def get_suggested_output(in_file_path, in_is_txt):
     return out_path
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description='Transforms files to text and vise-versa. '
@@ -103,10 +114,10 @@ if __name__ == "__main__":
                         default=NUM_CHARACTERS_PER_LINE, metavar='\b')
     parser.add_argument('-s', '--seperator', help='character that separates each line in the output', type=str,
                         default=SEPERATOR, metavar='\b')
-    parser.add_argument('-p', '--print', help='print output instead of saving it to file', type=bool,
-                        default=PRINT_OUTPUT, metavar='\b', action=argparse.BooleanOptionalAction)
+    parser.add_argument('-p', '--print', help='print output instead of saving it to file', type=str2bool,
+                        default=PRINT_OUTPUT, metavar='\b')
     parser.add_argument('-k', '--inkscape_mode', help='transform inkscape svg to regular svg before processing',
-                        type=bool, default=INKSCAPE_MODE, metavar='\b', action=argparse.BooleanOptionalAction)
+                        type=str2bool, default=INKSCAPE_MODE, metavar='\b')
     args = parser.parse_args()
 
     if args.inkscape_mode:

@@ -405,6 +405,17 @@ def pretty_time_delta(t_delta):
         return '%d s' % (seconds,)
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description='Create a line animation video from a svg file, '
@@ -429,11 +440,10 @@ if __name__ == "__main__":
                         type=float, metavar='\b', default=STEEPNESS)
     parser.add_argument('-w', '--width', help='line width in pixels', type=int, metavar='\b', default=LINE_WIDTH)
     parser.add_argument('-t', '--antialiasing', help='activate anti aliasing but with longer processing time',
-                        type=bool, default=ANTIALIASING, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-a', '--art', help='Display ASCII art', type=bool,
-                        default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-g', '--debug', help='show debug information and graphs', type=bool,
-                        default=DEBUG, metavar='\b', action=argparse.BooleanOptionalAction)
+                        type=str2bool, default=ANTIALIASING, metavar='\b')
+    parser.add_argument('-a', '--art', help='Display ASCII art', type=str2bool, default=ART, metavar='\b')
+    parser.add_argument('-g', '--debug', help='show debug information and graphs', type=str2bool,
+                        default=DEBUG, metavar='\b')
     args = parser.parse_args()
 
     if shutil.which("ffmpeg") is None:
