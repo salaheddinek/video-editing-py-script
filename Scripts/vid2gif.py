@@ -163,6 +163,17 @@ def get_mode_index(in_mode):
     return 100, MODE
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
+
+
 if __name__ == "__main__":
     modes_print = "'" + "', '".join(MODES_NAMES + ['all']) + "'"
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -177,10 +188,9 @@ if __name__ == "__main__":
                         type=str, default=MODE, metavar='\b')
     parser.add_argument('-t', '--video_type', help="type of videos that will be processed (if no input is provided)",
                         type=str, default=VIDEO_FORMAT, metavar='\b')
-    parser.add_argument('-v', '--ffmpeg_verbose', help="if True then show ffmpeg full verbose", type=bool,
-                        default=SHOW_FFMPEG_VERBOSE, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-a', '--art', help='Display ASCII art', type=bool,
-                        default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
+    parser.add_argument('-v', '--ffmpeg_verbose', help="if True then show ffmpeg full verbose", type=str2bool,
+                        default=SHOW_FFMPEG_VERBOSE, metavar='\b')
+    parser.add_argument('-a', '--art', help='Display ASCII art', type=str2bool, default=ART, metavar='\b')
     args = parser.parse_args()
     mode_idx, mode_print = get_mode_index(args.mode)
 

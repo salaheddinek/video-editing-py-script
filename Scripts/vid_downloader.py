@@ -141,6 +141,17 @@ def pretty_time_delta(t_delta):
         return '%d s' % (seconds,)
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description='Downloads video or part of a video using youtube-dl and ffmpeg')
@@ -149,14 +160,14 @@ if __name__ == "__main__":
                                                    ' hh.mm.ss', type=str, nargs='+', metavar='\b', default=TIME_LAPSE)
     parser.add_argument('-o', '--output', help='output video path. (without extension)', type=str, metavar='\b',
                         default=OUTPUT)
-    parser.add_argument('-v', '--video_only', help='download the video without the audio', type=bool,
-                        default=VIDEO_ONLY, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-s', '--audio_only', help='download the audio without the video', type=bool,
-                        default=AUDIO_ONLY, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-d', '--debug', help='show debug info about the video URL', type=bool,
-                        default=DEBUG, metavar='\b', action=argparse.BooleanOptionalAction)
-    parser.add_argument('-a', '--art', help='Display ASCII art', type=bool,
-                        default=ART, metavar='\b', action=argparse.BooleanOptionalAction)
+    parser.add_argument('-v', '--video_only', help='download the video without the audio', type=str2bool,
+                        default=VIDEO_ONLY, metavar='\b')
+    parser.add_argument('-s', '--audio_only', help='download the audio without the video', type=str2bool,
+                        default=AUDIO_ONLY, metavar='\b')
+    parser.add_argument('-d', '--debug', help='show debug info about the video URL', type=str2bool,
+                        default=DEBUG, metavar='\b')
+    parser.add_argument('-a', '--art', help='Display ASCII art', type=str2bool,
+                        default=ART, metavar='\b')
     args = parser.parse_args()
 
     intro_print(args.art)
