@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 __package__ = "vid_transition"
 import math
 import pathlib

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 __package__ = "pic2vid"
 from PIL import Image
 import pathlib
