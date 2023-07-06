@@ -15,6 +15,12 @@ VIDEO_ONLY = False
 AUDIO_ONLY = False
 ALLOW_4K_VIDEO = False
 ART = True
+_GENERIC_EXT = ".%(ext)s"
+_EXTENSIONS = ['webm', 'mkv', 'flv', 'vob', 'ogv', 'ogg', 'rrc', 'gifv', 'mng', 'mov', 'avi', 'qt', 'wmv', 'yuv', 'rm',
+               'asf', 'amv', 'mp4', 'm4p', 'm4v', 'mpg', 'mp2', 'mpeg', 'mpe', 'mpv', 'm4v', 'svi', '3gp', '3g2',
+               'mxf', 'roq', 'nsv', 'flv', 'f4v', 'f4p', 'f4a', 'f4b'
+               # audio files
+               "wav", "aiff", "mp3", "aac", "ogg", "wma", "flac", "aac", "ape", "opus"]
 
 
 def intro_print(in_art):
@@ -97,11 +103,30 @@ def get_url_text():
     return res
 
 
+def search_for_output(in_output: str):
+    out_path = pathlib.Path(in_output)
+    if out_path.suffix[1:].lower() in _EXTENSIONS:
+        return out_path
+
+    for itr_file in out_path.parent.glob("*"):
+        if itr_file.stem.startswith(out_path.name):
+            return itr_file
+    return pathlib.Path("")
+
+
+def sizeof_fmt(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f} {unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f} Yi{suffix}"
+
+
 def download_video_audio(in_url, in_t_interval, in_output, in_debug, in_dlp_format):
 
     res_path = in_output
     if pathlib.Path(in_output).suffix == "":
-        res_path += ".%(ext)s"
+        res_path += _GENERIC_EXT
 
     def set_download_ranges(info_dict, self):
         duration_opt = [{
@@ -121,22 +146,26 @@ def download_video_audio(in_url, in_t_interval, in_output, in_debug, in_dlp_form
     }
     if in_t_interval.provided:
         opts["download_ranges"] = set_download_ranges
-    print("downloading video/audio ...")
+    print("downloading media ...")
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download(in_url)
+        out_path = search_for_output(in_output)
+        if out_path.is_file():
+            return out_path
 
         opts = {
             **ydl.params,
             "external_downloader": "native",
             "external_downloader_args": {},
-            "writesubtitles": True,
+            "writesubtitles": False,
             # if you also want automatically generated captions/subtitles
-            "writeautomaticsub": True,
+            "writeautomaticsub": False,
             # so we only get the captions and don't download the (whole) video again
             "skip_download": True,
         }
         ydl.params = opts
         ydl.download(in_url)
+        return search_for_output(in_output)
 
 
 def get_video_name(in_url, in_t_interval, in_dlp_format, in_ext, in_debug):
@@ -161,8 +190,8 @@ def get_video_name(in_url, in_t_interval, in_dlp_format, in_ext, in_debug):
             main_name = "_vim"
 
     files = []
-    for ext in ["*.mp4", "*.mkv", "*.webm", "*.m4a", "*.mp3", "*.mov", "*.avi", "*.m4v"]:
-        for f in pathlib.Path.cwd().glob(ext):
+    for ext in _EXTENSIONS:
+        for f in pathlib.Path.cwd().glob("*." + ext):
             files += [f]
     num = 1
     previous_num = 0
@@ -174,7 +203,7 @@ def get_video_name(in_url, in_t_interval, in_dlp_format, in_ext, in_debug):
 
     vid_time = ""
     if in_t_interval.provided:
-        vid_time = f'_{in_t_interval.start.strftime("%H.%M.%S")}'
+        vid_time = f'_{in_t_interval.start.strftime("%Hh%Mm%Ss")}'
 
     return f"{num}{main_name}{v_id}{vid_time}{in_ext}"
 
@@ -262,15 +291,17 @@ def main():
     if output_path == "":
         output_path = get_video_name(url, t_interval, dlp_format, extension, args.debug)
 
-    download_video_audio(url, t_interval, output_path,args.debug, dlp_format)
-
-    if not args.debug:
+    res_path = download_video_audio(url, t_interval, output_path,args.debug, dlp_format)
+    if not res_path.is_file():
+        print("ERROR: could not download file: " + str(res_path))
+    else:
         print("")
-        print(f"finished downloading video: {url}")
+        print(f"finished downloading media from: {url}")
         t_interval.print_interval_str()
-        print(f'video name: {output_path}')
+        print(f"size: {sizeof_fmt(res_path.stat().st_size)}")
+        print(f'file path: {res_path}')
         print("")
-        print(("video download finished. Duration = {} ".format(pretty_time_delta(datetime.now() - exec_start_time))))
+        print(("media download finished. Duration = {} ".format(pretty_time_delta(datetime.now() - exec_start_time))))
         print("")
 
     end_print(args.art)
