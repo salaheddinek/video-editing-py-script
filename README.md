@@ -114,7 +114,7 @@ vid_compress.py --codec help
 
 <img src="readme_photos/vid_downloader.jpg" alt="vid_downloader_img" width="250"/>
 
-Downloads video or part of a video using youtube-dl and ffmpeg.
+Downloads video or part of a video using yt-dlp and ffmpeg.
 For example:
 
 ```
@@ -234,8 +234,6 @@ The commands needed to install these will be shown in the next section:
 
 [FFmpeg](https://www.ffmpeg.org/) is a command line video editing program. And it is used by almost all scripts provided by this repository.
 
-[Youtube-dl](https://github.com/ytdl-org/youtube-dl) is a package used to download videos from YouTube.com (and a few more sites) using command line.
-
 [Git](https://git-scm.com/) is used to update the scripts if the user wishes to do so.
 
 ## For Linux
@@ -243,18 +241,18 @@ The commands needed to install these will be shown in the next section:
 On Linux, you can use your command line favorite package manager.
 In our example, we will use Aptitude (```apt-get``` Ubuntu based).
 
-Here is teh list of commands to install FFmpeg, youtube-dl and the python packages:
+Here is the list of commands to install FFmpeg and the python packages:
 
 
 
 ```
 sudo apt install ffmpeg
-sudo apt install youtube-dl
 sudo apt install git
 
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade Pillow
 python3 -m pip install --upgrade svg.path
+python3 -m pip install --upgrade yt-dlp
 ```
 
 
@@ -266,20 +264,20 @@ We advise using **scoop** from [https://scoop.sh/](https://scoop.sh/) (a good al
 
 To install **scoop** and the other packages,
 type the following commands in PowerShell.
-To open a PowerShell open Windows Explorer ALT+F -> S -> R:
+To open a PowerShell open Windows 10 Explorer ALT+F -> S -> R:
 
 ```
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 irm get.scoop.sh | iex
 
 scoop install ffmpeg
-scoop install youtube-dl
 scoop install git
 
 py -m pip install --upgrade pip
 py -m pip install --upgrade Pillow
 py -m pip install --upgrade svg.path
 py -m pip install --upgrade windows-curses
+py -m pip install --upgrade yt-dlp
 ```
 
 

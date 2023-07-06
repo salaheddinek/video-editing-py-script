@@ -2,17 +2,18 @@
 import argparse
 import shutil
 import subprocess
-import os
 from datetime import datetime
 import pathlib
+import yt_dlp
 
 
-URL = ""
-TIME_LAPSE = ""  # "00:00:30 00:01:00"
+URL = ""  # "https://www.youtube.com/watch?v=es4x5R-rV9s"
+TIME_LAPSE = ["", ""]  # ["00:00:30", "00:01:00"]
 DEBUG = False
 OUTPUT = ""
 VIDEO_ONLY = False
 AUDIO_ONLY = False
+ALLOW_4K_VIDEO = False
 ART = True
 
 
@@ -43,19 +44,43 @@ def end_print(in_art):
         print(end)
 
 
-def get_start_and_end_time(parsed_time: str):
-    if len(parsed_time) != 2:
-        raise Exception(f"--time_lapse should have 2 timestamps, {len(parsed_time)} are given")
-    out = []
-    for t in parsed_time:
-        t = t.replace("::", ":")
-        t = t.replace(".", ":")
-        try:
-            out += [datetime.strptime(t, '%H:%M:%S')]
-        except ValueError as ve:
-            print("ERROR: ", ve)
-            exit(1)
-    return sorted(out)
+class TimeInterval:
+    def __init__(self, in_timestamps):
+        self.provided = False
+        if len(in_timestamps) != 2:
+            raise ValueError(f"--time_lapse should have 2 timestamps, {len(in_timestamps)} are given")
+        if in_timestamps[0] == "" and in_timestamps[1] == "":
+            return
+
+        formatted_timestamps = []
+        for t in in_timestamps:
+            t = t.replace("::", ":")
+            t = t.replace(".", ":")
+            try:
+                formatted_timestamps += [datetime.strptime(t, '%H:%M:%S')]
+            except ValueError as ve:
+                raise ValueError("ERROR: while parsing time interval: ", ve)
+        self.start = min(formatted_timestamps)
+        self.end = max(formatted_timestamps)
+        self.provided = True
+
+    def start_in_seconds(self):
+        return int((self.start - datetime.strptime("0:00:00", '%H:%M:%S')).total_seconds())
+
+    def end_in_seconds(self):
+        return int((self.end - datetime.strptime("0:00:00", '%H:%M:%S')).total_seconds())
+
+    def print_interval_str(self):
+        if not self.provided:
+            return
+        msg = f'video timestamps: {self.start.strftime("%H:%M:%S")} ({self.start_in_seconds()}s) -> '
+        msg += f'{self.end.strftime("%H:%M:%S")} ({self.end_in_seconds()}s)'
+        print(msg)
+
+
+def get_time_interval(parsed_time: str):
+    out = TimeInterval(parsed_time)
+    return out
 
 
 def get_url_text():
@@ -72,40 +97,69 @@ def get_url_text():
     return res
 
 
-def download_partial_video(in_url, in_timestamps, in_output, in_debug, in_video_only, in_audio_only):
-    res1 = subprocess.run(["youtube-dl", "--get-url", "--youtube-skip-dash-manifest", "-f",
-                           "bestvideo[height<=?1080]+bestaudio/best", in_url],
-                          stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
+def download_video_audio(in_url, in_t_interval, in_output, in_debug, in_dlp_format):
 
-    url_2 = res1.split("\n")
-    #print(url_2)
-    if len(url_2) != 2:
-        raise ValueError("ERROR: the command  'youtube-dl --get-url' should produce 2 urls")
-    start_t = f'{in_timestamps[0].strftime("%H:%M:%S")}.00'
-    end_t = f'{in_timestamps[1].strftime("%H:%M:%S")}.00'
-    res = ["ffmpeg", "-hide_banner"]
-    if not in_audio_only:
-        res += ["-ss", start_t, "-to", end_t, "-i", url_2[0]]
-    if not in_video_only:
-        res += ["-ss", start_t, "-to", end_t, "-i", url_2[1]]
-    res += [f"{in_output}.mp4"]
-    if in_debug:
-        print("exec command: \n")
-        print(" ".join(res))
-    else:
-        subprocess.run(res)
+    res_path = in_output
+    if pathlib.Path(in_output).suffix == "":
+        res_path += ".%(ext)s"
+
+    def set_download_ranges(info_dict, self):
+        duration_opt = [{
+            'start_time': in_t_interval.start_in_seconds(),
+            'end_time': in_t_interval.end_in_seconds()
+        }]
+        return duration_opt
+
+    opts = {
+        "external_downloader": "ffmpeg",
+        "force_keyframes_at_cuts": True,
+        "writesubtitles": False,
+        "writeautomaticsub": False,
+        "quiet": not in_debug,
+        "outtmpl": res_path,
+        "format": in_dlp_format,
+    }
+    if in_t_interval.provided:
+        opts["download_ranges"] = set_download_ranges
+    print("downloading video/audio ...")
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.download(in_url)
+
+        opts = {
+            **ydl.params,
+            "external_downloader": "native",
+            "external_downloader_args": {},
+            "writesubtitles": True,
+            # if you also want automatically generated captions/subtitles
+            "writeautomaticsub": True,
+            # so we only get the captions and don't download the (whole) video again
+            "skip_download": True,
+        }
+        ydl.params = opts
+        ydl.download(in_url)
 
 
-def get_video_name(in_url, in_timestamps):
-    v_id = "_" + subprocess.run(["youtube-dl", "--get-id", f"{url}"],
-                                stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
-    if "error" in v_id.lower():
-        v_id = ""
+def get_video_name(in_url, in_t_interval, in_dlp_format, in_ext, in_debug):
+    ydl_opts = {"quiet": not in_debug, "simulate": True, "forceurl": True, "format": in_dlp_format}
+    print("getting video info for naming ...")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        vid_info_raw = ydl.extract_info(in_url, download=False)
+        vid_info = ydl.sanitize_info(vid_info_raw)
+
+    v_id = ""
+    if "id" in vid_info:
+        v_id = "_" + vid_info["id"]
+
     main_name = "_vid"
-    if "youtube" in in_url.lower() or "youtu.be" in in_url.lower():
-        main_name = "_you"
-    elif "pin.it" in in_url.lower() or "pinterest" in in_url.lower():
-        main_name = "_pin"
+    if "webpage_url_domain" in vid_info:
+        website = vid_info["webpage_url_domain"].split(".")[0].lower().strip()
+        if website == "youtube":
+            main_name = "_you"
+        elif "pin" in website:
+            main_name = "_pin"
+        elif "vimeo" in website:
+            main_name = "_vim"
+
     files = []
     for ext in ["*.mp4", "*.mkv", "*.webm", "*.m4a", "*.mp3", "*.mov", "*.avi", "*.m4v"]:
         for f in pathlib.Path.cwd().glob(ext):
@@ -119,11 +173,10 @@ def get_video_name(in_url, in_timestamps):
                 num += 1
 
     vid_time = ""
-    if in_timestamps:
-        two_timestamps = get_start_and_end_time(args.time_lapse)
-        vid_time = f'_{two_timestamps[0].strftime("%H.%M.%S")}'
+    if in_t_interval.provided:
+        vid_time = f'_{in_t_interval.start.strftime("%H.%M.%S")}'
 
-    return f"{num}{main_name}{v_id}{vid_time}"
+    return f"{num}{main_name}{v_id}{vid_time}{in_ext}"
 
 
 def pretty_time_delta(t_delta):
@@ -144,84 +197,84 @@ def pretty_time_delta(t_delta):
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    if v.lower() in ('yes', 'true', 't', 'y', 'on', '1'):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ('no', 'false', 'f', 'n', 'off', '0'):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                     description='Downloads video or part of a video using youtube-dl and ffmpeg')
+                                     description='Downloads video or part of a video using yt-dlp and ffmpeg')
     parser.add_argument('-u', '--url', type=str, help='The video url', metavar='\b', default=URL)
-    parser.add_argument('-t', '--time_lapse', help='two timestamps: beginning and ending, accepted format: hh:mm:ss or'
-                                                   ' hh.mm.ss', type=str, nargs='+', metavar='\b', default=TIME_LAPSE)
+    parser.add_argument('-t', '--time_interval', help='time interval of the video part, two timestamps needed: '
+                                                      'start and stop, accepted format: hh:mm:ss or  hh.mm.ss',
+                        type=str, nargs=2, metavar='\b', default=TIME_LAPSE)
     parser.add_argument('-o', '--output', help='output video path. (without extension)', type=str, metavar='\b',
                         default=OUTPUT)
     parser.add_argument('-v', '--video_only', help='download the video without the audio', type=str2bool,
                         default=VIDEO_ONLY, metavar='\b')
-    parser.add_argument('-s', '--audio_only', help='download the audio without the video', type=str2bool,
+    parser.add_argument('-a', '--audio_only', help='download the audio without the video', type=str2bool,
                         default=AUDIO_ONLY, metavar='\b')
     parser.add_argument('-d', '--debug', help='show debug info about the video URL', type=str2bool,
                         default=DEBUG, metavar='\b')
-    parser.add_argument('-a', '--art', help='Display ASCII art', type=str2bool,
+    parser.add_argument('-l', '--allow_4k', help='allow the download of videos with resolution higher then FullHD',
+                        type=str2bool, default=ALLOW_4K_VIDEO, metavar='\b')
+    parser.add_argument('-A', '--art', help='Display ASCII art', type=str2bool,
                         default=ART, metavar='\b')
     args = parser.parse_args()
 
     intro_print(args.art)
 
-    for program in ["ffmpeg", "youtube-dl"]:
-        if shutil.which(program) is None:
-            print(f"ERROR: '{program}' is not installed, please install it before use")
-            quit()
+    if shutil.which("ffmpeg") is None:
+        print(f"ERROR: 'ffmpeg' is not installed, please install it before use")
+        quit()
+
+    t_interval = get_time_interval(args.time_interval)
 
     exec_start_time = datetime.now()
+
     if args.video_only and args.audio_only:
-        print("ERROR: you chose both 'video_only' and 'audio_only' modes, only one can be chosen")
-        quit()
+        raise ValueError("ERROR: you chose both 'video_only' and 'audio_only' modes, only one can be chosen")
+
+    extension = ""
+    if args.audio_only:
+        extension = ".mp3"
+        dlp_format = "bestaudio/best"
+    elif args.video_only:
+        extension = ".mp4"
+        if args.allow_4k:
+            dlp_format = "bestvideo/best"
+        else:
+            dlp_format = "bestvideo[height<=?1080]/best"
+    else:
+        if args.allow_4k:
+            dlp_format = "bestvideo+bestaudio/best"
+        else:
+            dlp_format = "bestvideo[height<=?1080]+bestaudio/best"
 
     url = args.url
     if len(url) == 0:
         url = get_url_text()
     output_path = args.output
     if output_path == "":
-        output_path = get_video_name(url, args.time_lapse)
+        output_path = get_video_name(url, t_interval, dlp_format, extension, args.debug)
 
-    if args.debug:
-        os.system(f"youtube-dl -F {url}")
-    if args.time_lapse != "":
-        timestamps = get_start_and_end_time(args.time_lapse)
-        print(f"start downloading video: {url}")
-        print(f'video timestampss: {timestamps[0].strftime("%H:%M:%S")} -> {timestamps[1].strftime("%H:%M:%S")}\n\n')
-        download_partial_video(url, timestamps, output_path, args.debug, args.video_only, args.audio_only)
-    else:
-        if args.video_only:
-            cmd_str = f"youtube-dl -f 'bestvideo[height<=?1080]/best' --output '{output_path}.%(ext)s' {url}"
-            cmd = ["youtube-dl", "-f", "bestsvideo[height<=?1080]/best", "--output", f"{output_path}.%(ext)s", url]
-        elif args.audio_only:
-            cmd_str = f"youtube-dl -f 'bestaudio/best' --output '{output_path}.%(ext)s' {url}"
-            cmd = ["youtube-dl", "-f", "bestaudio/best", "--output", f"{output_path}.%(ext)s", url]
-        else:
-            cmd_str = f"youtube-dl -f 'bestvideo[height<=?1080]+bestaudio/best' --output '{output_path}.%(ext)s' {url}"
-            cmd = ["youtube-dl", "-f", "bestvideo[height<=?1080]+bestaudio/best", "--output", f"{output_path}.%(ext)s", url]
-
-        if args.debug:
-            print("exec command: \n")
-            print(cmd_str)
-        else:
-            subprocess.run(cmd)
+    download_video_audio(url, t_interval, output_path,args.debug, dlp_format)
 
     if not args.debug:
         print("")
         print(f"finished downloading video: {url}")
-        if args.time_lapse != "":
-            timestamps = get_start_and_end_time(args.time_lapse)
-            print(f'video timestamps: {timestamps[0].strftime("%H:%M:%S")} -> {timestamps[1].strftime("%H:%M:%S")}')
+        t_interval.print_interval_str()
         print(f'video name: {output_path}')
         print("")
         print(("video download finished. Duration = {} ".format(pretty_time_delta(datetime.now() - exec_start_time))))
         print("")
 
     end_print(args.art)
+
+
+if __name__ == "__main__":
+    main()
