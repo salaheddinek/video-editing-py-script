@@ -7,6 +7,7 @@ but these scripts should also work on macOS because python is a system agnostic 
 - [The Scripts usage](#The-Scripts-usage)
 	+ [cmd_help](#cmd_help)
 	+ [vid_transition](#vid_transition)
+    + [text_animator](#text_animator)
 	+ [vid_compress](#vid_compress)
 	+ [vid_downloader](#vid_downloader)
 	+ [pic2vid](#pic2vid)
@@ -14,7 +15,6 @@ but these scripts should also work on macOS because python is a system agnostic 
 	+ [svg_animator](#svg_animator)
 	+ [file2txt](#file2txt)
 	+ [vid2gif](#vid2gif)
-	+ [text_animator](#text_animator)
 
 - [Prerequisites](#Prerequisites)
 	+ [For Linux](#For-Linux)
@@ -86,6 +86,37 @@ To show all transition animation, type the following command:
 ```
 vid_transition.py -a help
 ```
+
+## text_animator
+
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/text_animation_1.gif" alt="text_animator_gif" width="250"/>
+
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/text_animation_2.gif" alt="text_animator_gif" width="250"/>
+
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/text_animation_3.gif" alt="text_animator_gif" width="250"/>
+
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/text_animation_4.png" alt="text_animator_gif" width="250"/>
+
+Create a text animation video with a transparent background.
+The font size is calculated automatically from the text_bbox variable.
+To use a custom font (other then 'text_animator_overpass_font'),
+provide a path to a new '.ttf' file using '--font'.
+On Linux, providing the name of the font is sufficient
+(the script will look for it from the installed fonts in the system).
+to create a line break use the character "|"
+
+For example:
+
+```
+text_animator.py -i "vibration|animation" --length 3 --antialiasing true -c 255,0,0 --text_bbox 500 400
+```
+
+This command will produce a video with a transparent background of 3 seconds length.
+In this video, the sentence 'vibration animation' is animated.
+The color of the text will be red, and it will have the default size of 600x600 pixels.
+The script will try to fit the text in the text bounding box of 500x400 pixels,
+and it will calculate the font size automatically.
+
 
 ## vid_compress
 
@@ -202,29 +233,6 @@ vid2gif.py -i birds.mp4 -f 12 -s 300
 
 This command will take the birds.mp3 video and transform it to a GIF with 12 frames per second,
 and an image width of 300  pixels.
-
-## text_animator
-
-<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/text_animator.gif" alt="text_animator_gif" width="250"/>
-
-Create a text typing animation video with a transparent background.
-The font size is calculated automatically from the text_bbox variable.
-To use a custom font (other then 'text_animator_overpass_font'),
-provide a path to a new '.ttf' file using '--font'.
-On Linux, providing the name of the font is sufficient
-(the script will look for it from the installed fonts in the system).
-
-For example:
-
-```
-text_animator.py -i "computer can also type" --length 3 --antialiasing true -c 255,0,0 --text_bbox 550 300
-```
-
-This command will produce a video with a transparent background of 3 seconds length.
-In this video, the sentence 'computer can also type' is animated.
-The color of the text will be red, and it will have the default size of 600x600 pixels.
-The script will try to fit the text in the text bounding box of 550x300 pixels,
-and it will calculate the font size automatically.
 
 
 # Prerequisites

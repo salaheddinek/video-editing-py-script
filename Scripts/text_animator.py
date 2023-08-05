@@ -502,12 +502,12 @@ class ImageAnimation():
             print(f"frequency: {self.frequency} | animation randomness seeds: ({self.seed_x}, {self.seed_y})")
 
     def _merge_images_into_video(self):
-        cmd = f'ffmpeg -y -i { self.tmp_folder / "%03d.png"} '
+        cmd = f'ffmpeg -y -framerate {self.fps} -i { self.tmp_folder / "%03d.png"} '
         if self.animation_type == Animation.TYPING:
             letters_speed = float(len(self.text)) / self.vid_length
             cmd = f'ffmpeg -y -framerate {letters_speed} -i { self.tmp_folder / "%03d.png"} '
 
-        cmd += f'-hide_banner -loglevel {self.ffmpeg_verbose} -vcodec png -r {self.fps} {self.output_video}'
+        cmd += f'-hide_banner -loglevel {self.ffmpeg_verbose} -vcodec png -crf 25 -r {self.fps} {self.output_video}'
         # print(cmd)
         os.system(cmd)
         
