@@ -77,7 +77,7 @@ def parse_input_files(in_args, in_ext):
     else:
         for p_str in in_args.input:
             res += [pathlib.Path(p_str)]
-    return res
+    return sorted(res)
 
 
 def pretty_time_delta(t_delta):
