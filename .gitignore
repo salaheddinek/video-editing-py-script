@@ -5,6 +5,8 @@ __pycache__/
 init.sh
 # C extensions
 *.so
+.vscode/
+data/
 
 # Distribution / packaging
 .Python

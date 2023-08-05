@@ -32,7 +32,7 @@ To show information about any script, execute ```<SCRIPT_NAME>.py --help```
 
 ## cmd_help
 
-<img src="readme_photos/cmd_help.jpg" alt="cmd_help_img" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/cmd_help.jpg" alt="cmd_help_img" width="250"/>
 
 This script shows a list that contains all other scripts,
 and let you select which one you want to use to display its help.
@@ -50,19 +50,19 @@ Creates a smooth transition between two videos. Some examples:
 
 #### rotation transition
 
-<img src="readme_photos/vid_transition_rot.gif" alt="vid_transition_rot_gif" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_transition_rot.gif" alt="vid_transition_rot_gif" width="250"/>
 
 #### zoom in transition
 
-<img src="readme_photos/vid_transition_zoom.gif" alt="vid_transition_zoom_gif" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_transition_zoom.gif" alt="vid_transition_zoom_gif" width="250"/>
 
 #### translation transition
 
-<img src="readme_photos/vid_transition_tran.gif" alt="vid_transition_tran_gif" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_transition_tran.gif" alt="vid_transition_tran_gif" width="250"/>
 
 #### long translation transition + brightness transition
 
-<img src="readme_photos/vid_transition_lg_tran.gif" alt="vid_transition_lg_tran_gif" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_transition_lg_tran.gif" alt="vid_transition_lg_tran_gif" width="250"/>
 
 Makes a transition animation between two videos, using the last part of the first video, and the first part of the second video.
 
@@ -89,7 +89,7 @@ vid_transition.py -a help
 
 ## vid_compress
 
-<img src="readme_photos/vid_compress.jpg" alt="vid_compress_img" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_compress.jpg" alt="vid_compress_img" width="250"/>
 
 Compresses videos using ffmpeg,
 also provides multiple options in order to change the resulting videos like dimension change or sound removal.
@@ -112,7 +112,7 @@ vid_compress.py --codec help
 
 ## vid_downloader
 
-<img src="readme_photos/vid_downloader.jpg" alt="vid_downloader_img" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_downloader.jpg" alt="vid_downloader_img" width="250"/>
 
 Downloads video or part of a video using yt-dlp and ffmpeg.
 For example:
@@ -125,7 +125,7 @@ This command will download the part from **0 h 00 m 00s** to **0h 00 m 02s** of 
 
 ## pic2vid
 
-<img src="readme_photos/pic2vid.jpg" alt="pic2vid_img" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/pic2vid.jpg" alt="pic2vid_img" width="250"/>
 
 Search for images in the current directory and convert them to video, all images must have the same dimensions.
 The number of images shown per second is calculated using the provided duration.
@@ -142,7 +142,7 @@ and 25 frames per second. The number of images shown in each second depends on t
 
 ## simple_svg
 
-<img src="readme_photos/simple_svg.jpg" alt="simple_svg_img" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/simple_svg.jpg" alt="simple_svg_img" width="250"/>
 
 Generate simple shape in the form of SVG file.
 
@@ -160,7 +160,7 @@ You just have to past the command using Ctrl+V and hit Enter (you need to have '
 
 ## svg_animator
 
-<img src="readme_photos/svg_animator.gif" alt="svg_animator_gif" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/svg_animator.gif" alt="svg_animator_gif" width="250"/>
 
 Create a line animation video from a SVG file, the supported shapes are: path, ellipse, circle and rect. Only the first shape presented in the file is animated.
 
@@ -175,7 +175,7 @@ The color of the used line is RGB(0,204,153) and a width of 13.
 
 ## file2txt
 
-<img src="readme_photos/file2txt.jpg" alt="file2txt_img" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/file2txt.jpg" alt="file2txt_img" width="250"/>
 
 Transforms files to text and vise-versa. Useful to embed images inside code, for example.
 
@@ -190,7 +190,7 @@ This will transform 'flower_icon.png' into a text that you can embed in your pro
 
 ## vid2gif
 
-<img src="readme_photos/vid2gif.gif" alt="vid2gif_gif" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid2gif.gif" alt="vid2gif_gif" width="250"/>
 
 Converts videos to GIFs. Multiple optimization option are provided.
 
@@ -205,7 +205,7 @@ and an image width of 300  pixels.
 
 ## text_animator
 
-<img src="readme_photos/text_animator.gif" alt="text_animator_gif" width="250"/>
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/text_animator.gif" alt="text_animator_gif" width="250"/>
 
 Create a text typing animation video with a transparent background.
 The font size is calculated automatically from the text_bbox variable.
