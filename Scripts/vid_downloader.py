@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 import shutil
+import tempfile
 import subprocess
 from datetime import datetime
 import pathlib
+import os
 import yt_dlp
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 
 URL = ""  # "https://www.youtube.com/watch?v=es4x5R-rV9s"
@@ -15,12 +18,28 @@ VIDEO_ONLY = False
 AUDIO_ONLY = False
 ALLOW_4K_VIDEO = False
 ART = True
-_GENERIC_EXT = ".%(ext)s"
+ADD_REFERENCE = True
+REFERENCE_CORNER = "top-left"  # choices = ["top-left", "top-right", "bottom-left", "bottom-right"]
+REFERENCE_OPACITY = 0.5
+REFERENCE_COLOR = "250,250,250"
+
+
+# internal parameters
+_GENERIC_EXT = ".%(ext)s"  # extension of the downloaded video (only if no reference is added)
 _EXTENSIONS = ['webm', 'mkv', 'flv', 'vob', 'ogv', 'ogg', 'rrc', 'gifv', 'mng', 'mov', 'avi', 'qt', 'wmv', 'yuv', 'rm',
                'asf', 'amv', 'mp4', 'm4p', 'm4v', 'mpg', 'mp2', 'mpeg', 'mpe', 'mpv', 'm4v', 'svi', '3gp', '3g2',
                'mxf', 'roq', 'nsv', 'flv', 'f4v', 'f4p', 'f4a', 'f4b'
                # audio files
                "wav", "aiff", "mp3", "aac", "ogg", "wma", "flac", "aac", "ape", "opus"]
+_ANTI_ALIASING = False  # activate antialiasing
+_BOUNDING_BOX = (0.7, 0.03)  # the bounding box of the reference text (font size estimated automatically)
+_APPLY_SHADOW = True  # add a small drop shadow for reference text for more visibility
+_SHADOW_TRANSPARENCY_MULTIPLIER = 0.4  # shadow opacity compared to text opacity
+_SHADOW_WIDTH = 3  # width of shadow in pixels
+_MAX_NUM_CHARACTERS = 120  # if reference is too long then more character are replace by '...'
+_FONT_PATH = "DejaVuSans"  # font path or font name in case using Linux
+_MERGED_VIDEO_EXTENSION = ".mp4"  # video extension if reference text is added
+_MERGED_VIDEO_CODEC = "h264"  # video codec if reference text is added
 
 
 def intro_print(in_art):
@@ -64,8 +83,8 @@ class TimeInterval:
             t = t.replace(".", ":")
             try:
                 formatted_timestamps += [datetime.strptime(t, '%H:%M:%S')]
-            except ValueError as ve:
-                raise ValueError("ERROR: while parsing time interval: ", ve)
+            except ValueError as vae:
+                raise ValueError("ERROR: while parsing time interval: ", vae)
         self.start = min(formatted_timestamps)
         self.end = max(formatted_timestamps)
         self.provided = True
@@ -82,6 +101,153 @@ class TimeInterval:
         msg = f'video timestamps: {self.start.strftime("%H:%M:%S")} ({self.start_in_seconds()}s) -> '
         msg += f'{self.end.strftime("%H:%M:%S")} ({self.end_in_seconds()}s)'
         print(msg)
+
+
+class TextPainter():
+    """paint a text image"""
+    def __init__(self, vid_info: dict, opacity: float, corner: str, color:tuple):
+        self.text = ""
+        self.resolution = (1920, 1080)
+        self._get_reference_text_and_resolution(vid_info)
+        self.resolution_original = self.resolution  
+        self.opacity = opacity
+        self.justify = "left"
+        if "right" in corner.lower():
+            self.justify = "right"
+        self.is_top = True
+        if "bottom" in corner.lower():
+            self.is_top = False
+        self.text_bbox = (int(round(_BOUNDING_BOX[0] * self.resolution[0])), 
+                          int(round(_BOUNDING_BOX[1] * self.resolution[1])))
+        if _ANTI_ALIASING:
+            self.text_bbox = (2 * self.text_bbox[0], 2 * self.text_bbox[1])
+            self.resolution = (2 * self.resolution_original [0], 2 * self.resolution_original [1])  
+            
+        self.num_dilations = 1
+        self.color = (color[0], color[1], color[2], 255)
+        self.shadow_color = (255 - color[0], 
+                             255 - color[1], 
+                             255 - color[2], 
+                             int(round(255 * _SHADOW_TRANSPARENCY_MULTIPLIER)))
+
+        self.font = self._get_font_path()
+        self.font_size = None
+        self._choose_font_size()
+
+
+    def _get_reference_text_and_resolution(self, vid_info: dict):
+        if "webpage_url_domain" in vid_info:
+            self.text += vid_info["webpage_url_domain"].split(".")[0].lower().strip() + ": "
+        else:
+            raise ValueError("could not get video information")
+        
+        if "channel" in vid_info:
+            self.text += vid_info["channel"] + " - "
+        elif "uploader" in vid_info:
+            self.text += vid_info["uploader"] + " - "
+
+        
+        if "title" in vid_info:
+            self.text += vid_info["title"]
+        elif "id" in vid_info:
+            self.text += "id: " + vid_info["id"]
+        else:
+            raise ValueError("could not get video information")
+        
+        if len(self.text) > _MAX_NUM_CHARACTERS:
+            self.text  = self.text[:_MAX_NUM_CHARACTERS] + " ..."
+
+        if "width" in vid_info and "height" in vid_info: 
+            self.resolution = (vid_info["width"], vid_info["height"])
+        else:
+            print("WARNING: could not get resolution from video info")
+
+
+    @staticmethod
+    def _get_font_path():  # only for linux right now
+        font_name = _FONT_PATH
+        font_p = pathlib.Path(font_name)
+        if font_p.is_file():
+            if font_p.suffix == ".ttf":
+                return font_name
+        reduced_font_name = font_name.replace(" ", "").lower()
+        if not reduced_font_name.endswith(".ttf"):
+            reduced_font_name += ".ttf"
+
+        # print(f"reduced: {reduced_font_name}")
+        fonts_dict = {}
+        if shutil.which("fc-list"):
+            installed_fonts = subprocess.run(["fc-list"], stdout=subprocess.PIPE).stdout.decode('utf-8').split("\n")
+            for installed in installed_fonts:
+                installed_path = installed.split(":")[0].strip()
+
+                installed_name = pathlib.Path(installed_path).name.replace(" ", "").lower()
+                fonts_dict[installed_name] = installed_path
+                # print(installed_path)
+                if installed_name == reduced_font_name:
+                    return installed_path
+            for n, p in fonts_dict.items():
+                if reduced_font_name[:-4] in n:
+                    return p
+        alt_font_path = pathlib.Path(__file__).parent / "text_animator_overpass_font.ttf"
+        if alt_font_path.is_file():
+            return str(alt_font_path)
+        return ""
+
+
+    def get_image(self):
+        img = Image.new("RGBA", self.resolution, (0, 0, 0, 0))
+        pil_font = ImageFont.truetype(self.font, self.font_size)
+        draw = ImageDraw.Draw(img)
+        anchor = self.justify[0] + "a"
+
+        pos = [1, 1]
+        if self.justify == "right":
+            pos[0] = self.resolution[0] - 1
+
+        if not self.is_top:
+            anchor = self.justify[0] +  "d"
+            pos[1] = self.resolution[1] - 1
+
+        draw.multiline_text(pos, self.text, self.color, font=pil_font, anchor=anchor, align=self.justify)
+
+        if _APPLY_SHADOW:
+            shadow = Image.new("RGBA", self.resolution, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(shadow)
+            draw.multiline_text(pos, self.text, self.shadow_color, font=pil_font, anchor=anchor, align=self.justify)
+            shadow = shadow.filter(ImageFilter.BoxBlur(_SHADOW_WIDTH))
+            img = Image.alpha_composite(shadow, img)
+
+            alpha = img.split()[3]
+            alpha = ImageEnhance.Brightness(alpha).enhance(self.opacity)
+            img.putalpha(alpha)
+
+        if _ANTI_ALIASING:
+            img = img.resize(self.resolution_original, resample=Image.Resampling.LANCZOS)
+        
+        return img
+    
+
+    def _choose_font_size(self):
+        original = Image.new("RGB", self.resolution, (0, 255, 0))
+
+        print("estimating font size ...")
+        f_size = 0
+        overflow = False
+        while not overflow:
+            f_size += 1
+            draw = ImageDraw.Draw(original)
+            pil_font = ImageFont.truetype(self.font, f_size)
+            bbox = draw.multiline_textbbox((1, 1), self.text, font=pil_font)
+            if bbox[2] - bbox[0] > self.text_bbox[0] or bbox[3] - bbox[1] > self.text_bbox[1]:
+                overflow = True
+            if f_size >= self.text_bbox[0]:
+                overflow = True
+            # print(f"bbox = [{bbox}] , f_size = {f_size}")
+        f_size -= 1
+        self.font_size = f_size
+        print(f"estimated font size: {self.font_size}")
+
 
 
 def get_time_interval(parsed_time: str):
@@ -168,13 +334,7 @@ def download_video_audio(in_url, in_t_interval, in_output, in_debug, in_dlp_form
         return search_for_output(in_output)
 
 
-def get_video_name(in_url, in_t_interval, in_dlp_format, in_ext, in_debug):
-    ydl_opts = {"quiet": not in_debug, "simulate": True, "forceurl": True, "format": in_dlp_format}
-    print("getting video info for naming ...")
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        vid_info_raw = ydl.extract_info(in_url, download=False)
-        vid_info = ydl.sanitize_info(vid_info_raw)
-
+def get_video_name(vid_info, in_t_interval, in_ext):
     v_id = ""
     if "id" in vid_info:
         v_id = "_" + vid_info["id"]
@@ -207,6 +367,16 @@ def get_video_name(in_url, in_t_interval, in_dlp_format, in_ext, in_debug):
 
     return f"{num}{main_name}{v_id}{vid_time}{in_ext}"
 
+def merge_video_with_reference_image(tmp_vid_path, tmp_reference_path, output_path, debug):
+    log_level = "quiet"
+    if debug:
+        log_level = "info"
+
+    cmd = f'ffmpeg -y -hide_banner -loglevel {log_level} -i "{str(tmp_vid_path)}" -i "{str(tmp_reference_path)}" '
+    cmd += f'-filter_complex "[0:v][1:v] overlay=0:0" -c:v {_MERGED_VIDEO_CODEC} -c:a copy "{str(output_path)}"'
+    # print(cmd)
+    os.system(cmd)
+
 
 def pretty_time_delta(t_delta):
     seconds = int(t_delta.total_seconds())
@@ -234,9 +404,31 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected, possible values: yes, y, true, 1, no, n, false, 0.')
 
 
+def parse_color(in_c: str):
+    c_str = in_c.lower().strip(" #()")
+    if c_str.startswith("rgb"):
+        c_str = c_str[3:].strip(" ()")
+    if c_str.startswith("rgba"):
+        c_str = c_str[4:].strip(" ()")
+    res = []
+    if len(c_str) == 6:
+        res = [int(c_str[i:i+2], 16) for i in (0, 2, 4)]
+    else:
+        c_str = c_str.replace(",", " ")
+        for word in c_str.split(" "):
+            if word.isnumeric():
+                if 0 <= int(word) <= 255:
+                    res += [int(word)]
+    if len(res) < 3:
+        raise ValueError(f'ERROR: the color {in_c} could not parsed as color, please use HEX or "R,G,B" color format')
+    return res[0], res[1], res[2]
+
+
 def main():
+    corner_choices = ["top-left", "top-right", "bottom-left", "bottom-right"]
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                     description='Downloads video or part of a video using yt-dlp and ffmpeg')
+                                     description='Downloads video or part of a video using yt-dlp and ffmpeg, '
+                                                 'also add the reference to the video  source')
     parser.add_argument('-u', '--url', type=str, help='The video url', metavar='\b', default=URL)
     parser.add_argument('-t', '--time_interval', help='time interval of the video part, two timestamps needed: '
                                                       'start and stop, accepted format: hh:mm:ss or  hh.mm.ss',
@@ -251,6 +443,14 @@ def main():
                         default=DEBUG, metavar='\b')
     parser.add_argument('-l', '--allow_4k', help='allow the download of videos with resolution higher then FullHD',
                         type=str2bool, default=ALLOW_4K_VIDEO, metavar='\b')
+    parser.add_argument('-r', '--reference', help='add the reference of download source in a video corner',
+                        type=str2bool, metavar='\b', default=ADD_REFERENCE)
+    parser.add_argument('-n', '--corner', help='the corner where to put the reference: ' + str(corner_choices),
+                        type=str, choices=corner_choices, metavar='\b', default=REFERENCE_CORNER)
+    parser.add_argument('-c', '--color', help='reference text font color (HEX and RGB are accepted)', type=str,  
+                        default=REFERENCE_COLOR, metavar='\b')
+    parser.add_argument('-O', '--opacity', help='the opacity of the reference text [0, 1]',
+                        type=float, choices=corner_choices, metavar='\b', default=REFERENCE_OPACITY)
     parser.add_argument('-A', '--art', help='Display ASCII art', type=str2bool,
                         default=ART, metavar='\b')
     args = parser.parse_args()
@@ -258,7 +458,7 @@ def main():
     intro_print(args.art)
 
     if shutil.which("ffmpeg") is None:
-        print(f"ERROR: 'ffmpeg' is not installed, please install it before use")
+        print("ERROR: 'ffmpeg' is not installed, please install it before use")
         quit()
 
     t_interval = get_time_interval(args.time_interval)
@@ -285,24 +485,55 @@ def main():
             dlp_format = "bestvideo[height<=?1080]+bestaudio/best"
 
     url = args.url
+    ref_color = tuple(parse_color(args.color))
+    if 0.0 > args.opacity or args.opacity > 1.0:
+        raise ValueError("Opacity should be between 0 and 1.")
     if len(url) == 0:
         url = get_url_text()
+
+    ydl_opts = {"quiet": not args.debug, "simulate": True, "forceurl": True, "format": dlp_format}
+    print("getting video info ...")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        vid_info_raw = ydl.extract_info(url, download=False)
+        vid_info = ydl.sanitize_info(vid_info_raw)
+
     output_path = args.output
     if output_path == "":
-        output_path = get_video_name(url, t_interval, dlp_format, extension, args.debug)
+        output_path = get_video_name(vid_info, t_interval, extension)
 
-    res_path = download_video_audio(url, t_interval, output_path,args.debug, dlp_format)
-    if not res_path.is_file():
-        print("ERROR: could not download file: " + str(res_path))
-    else:
-        print("")
-        print(f"finished downloading media from: {url}")
-        t_interval.print_interval_str()
-        print(f"size: {sizeof_fmt(res_path.stat().st_size)}")
-        print(f'file path: {res_path}')
-        print("")
-        print(("media download finished. Duration = {} ".format(pretty_time_delta(datetime.now() - exec_start_time))))
-        print("")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = pathlib.Path(tmp_dir)
+
+        if args.reference and not args.audio_only:
+            tmp_vid = tmp_path / pathlib.Path(output_path).name
+            tmp_res_path = download_video_audio(url, t_interval, str(tmp_vid), args.debug, dlp_format)
+            if not tmp_res_path.is_file():
+                print("ERROR: could not download file: " + str(tmp_res_path))
+
+            print("creating the reference image ...")
+            ref_painter = TextPainter(vid_info, args.opacity, args.corner, ref_color)
+            img = ref_painter.get_image()
+            img_path = tmp_path / "vid_ref.png"
+            img.save(str(img_path))
+            
+            print("merging video and reference image ...")
+            res_path = pathlib.Path(output_path).parent / (pathlib.Path(tmp_res_path).stem + _MERGED_VIDEO_EXTENSION)
+            merge_video_with_reference_image(tmp_res_path, img_path, res_path, args.debug)
+
+        else:
+            res_path = download_video_audio(url, t_interval, output_path, args.debug, dlp_format)
+
+        if not res_path.is_file():
+            print("ERROR: could not download file: " + str(res_path))
+        else:
+            print("")
+            print(f"finished downloading media from: {url}")
+            t_interval.print_interval_str()
+            print("size: " + sizeof_fmt(res_path.stat().st_size))
+            print(f'file path: {res_path}')
+            print("")
+            print("media download finished. Duration = " + pretty_time_delta(datetime.now() - exec_start_time))
+            print("")
 
     end_print(args.art)
 
