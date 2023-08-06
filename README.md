@@ -8,8 +8,8 @@ but these scripts should also work on macOS because python is a system agnostic 
 	+ [cmd_help](#cmd_help)
 	+ [vid_transition](#vid_transition)
     + [text_animator](#text_animator)
-	+ [vid_compress](#vid_compress)
 	+ [vid_downloader](#vid_downloader)
+	+ [vid_compress](#vid_compress)
 	+ [pic2vid](#pic2vid)
 	+ [simple_svg](#simple_svg)
 	+ [svg_animator](#svg_animator)
@@ -118,6 +118,21 @@ The script will try to fit the text in the text bounding box of 500x400 pixels,
 and it will calculate the font size automatically.
 
 
+## vid_downloader
+
+<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_downloader.gif" alt="vid_downloader_img" width="250"/>
+
+Downloads video or part of a video using yt-dlp and ffmpeg. 
+It will also add a small text reference to the video source in the corner of the video (this can be disabled).
+For example:
+
+```
+vid_downloader.py -t 0.00.00 0.00.02 -u https://www.youtube.com/watch?v=PCicKydX5GE
+```
+
+This command will download the part from **0 h 00 m 00s** to **0h 00 m 02s** of this YouTube [video](https://www.youtube.com/watch?v=PCicKydX5GE).
+
+
 ## vid_compress
 
 <img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_compress.jpg" alt="vid_compress_img" width="250"/>
@@ -141,18 +156,6 @@ For more information about codecs that can be used:
 vid_compress.py --codec help
 ```
 
-## vid_downloader
-
-<img src="https://raw.githubusercontent.com/salaheddinek/salaheddine-media-content/main/video-editing-py-script/vid_downloader.jpg" alt="vid_downloader_img" width="250"/>
-
-Downloads video or part of a video using yt-dlp and ffmpeg.
-For example:
-
-```
-vid_downloader.py -t 0.00.00 0.00.02 -u https://www.youtube.com/watch?v=PCicKydX5GE
-```
-
-This command will download the part from **0 h 00 m 00s** to **0h 00 m 02s** of this YouTube [video](https://www.youtube.com/watch?v=PCicKydX5GE).
 
 ## pic2vid
 
