@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = "1.6.1"
+__version__ = "1.7.0"
 
 import curses
 import os
