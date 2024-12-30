@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-__version__ = "1.8.0"
+__version__ = "1.8.1"
 
 import curses
 import os
@@ -146,7 +146,7 @@ class Updater:
                   "please install it before updating (for example: scoop install git)")
             return False
         print("cloning the repository from github ...")
-        subprocess.run(["git", "clone", self.git_url], cwd=str(in_tmp_path))
+        subprocess.run(["git", "clone", self.git_url], cwd=str(in_tmp_path), check=False)
 
         for child in in_tmp_path.iterdir():
             self.scripts_tmp_path = child / "Scripts"
@@ -178,7 +178,7 @@ class Updater:
         for child in self.scripts_tmp_path.iterdir():
             old_script = cur_scripts_folder / child.name
             old_script.unlink(missing_ok=True)
-            child.rename(old_script)
+            shutil.move(child, old_script)
 
     @staticmethod
     def _update_bat_files_for_windows():
