@@ -17,6 +17,7 @@ OUTPUT = ""
 VIDEO_ONLY = False
 AUDIO_ONLY = False
 ALLOW_4K_VIDEO = False
+FASTER_PARTIAL_DOWNLOAD = False
 ART = True
 ADD_REFERENCE = True
 REFERENCE_CORNER = "top-left"  # choices = ["top-left", "top-right", "bottom-left", "bottom-right"]
@@ -38,8 +39,9 @@ _SHADOW_TRANSPARENCY_MULTIPLIER = 0.4  # shadow opacity compared to text opacity
 _SHADOW_WIDTH = 3  # width of shadow in pixels
 _MAX_NUM_CHARACTERS = 120  # if reference is too long then more character are replace by '...'
 _FONT_PATH = "DejaVuSans"  # font path or font name in case using Linux
-_MERGED_VIDEO_EXTENSION = ".mp4"  # video extension if reference text is added
-_MERGED_VIDEO_CODEC = "h264"  # video codec if reference text is added
+_POST_PROCESSING_VIDEO_EXTENSION = ".mp4"  # video extension if ffmpeg is used to change downloaded video
+_POST_PROCESSING_VIDEO_CODEC = "libx265"  # video codec if ffmpeg is used to change downloaded video
+_POST_PROCESSING_OPTIONS = "-x265-params log-level=quiet"  # options passed to ffmpeg specific to post processing codec
 
 
 def intro_print(in_art):
@@ -84,7 +86,7 @@ class TimeInterval:
             try:
                 formatted_timestamps += [datetime.strptime(t, '%H:%M:%S')]
             except ValueError as vae:
-                raise ValueError("ERROR: while parsing time interval: ", vae)
+                raise ValueError("ERROR: while parsing time interval") from vae
         self.start = min(formatted_timestamps)
         self.end = max(formatted_timestamps)
         self.provided = True
@@ -177,7 +179,7 @@ class TextPainter():
         # print(f"reduced: {reduced_font_name}")
         fonts_dict = {}
         if shutil.which("fc-list"):
-            installed_fonts = subprocess.run(["fc-list"], stdout=subprocess.PIPE).stdout.decode('utf-8').split("\n")
+            installed_fonts = subprocess.run(["fc-list"], stdout=subprocess.PIPE, check=False).stdout.decode('utf-8').split("\n")
             for installed in installed_fonts:
                 installed_path = installed.split(":")[0].strip()
 
@@ -249,35 +251,48 @@ class TextPainter():
         print(f"estimated font size: {self.font_size}")
 
 
-
-def get_time_interval(parsed_time: str):
-    out = TimeInterval(parsed_time)
-    return out
-
-
 def get_url_text():
     msg = "Please enter the video url:"
     if shutil.which("zenity") is not None:
         res = subprocess.run(["zenity", "--entry", "--title", 'input', "--text", msg],
-                             stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
+                             stdout=subprocess.PIPE, check=False).stdout.decode('utf-8')[:-1]
     elif shutil.which("kdialog") is not None:
         res = subprocess.run(["kdialog", "--title", "Input", "--inputbox", msg],
-                             stdout=subprocess.PIPE).stdout.decode('utf-8')[:-1]
+                             stdout=subprocess.PIPE, check=False).stdout.decode('utf-8')[:-1]
     else:
         res = input(msg)
     # print("=>" + res)
     return res
 
 
-def search_for_output(in_output: str):
-    out_path = pathlib.Path(in_output)
-    if out_path.suffix[1:].lower() in _EXTENSIONS:
-        return out_path
 
-    for itr_file in out_path.parent.glob("*"):
-        if itr_file.stem.startswith(out_path.name):
+def check_output(tmp_folder):
+    """check if output file has been generate before proceeding to the next step, also rename the file from output to input"""
+    for itr_file in tmp_folder.glob("*"):
+        if itr_file.stem.startswith("output"):
+            new_file = itr_file.parent / ("input" + itr_file.suffix)
+            new_file.unlink(missing_ok=True)
+            # if file is empty this may indicate that download failed
+            if itr_file.stat().st_size == 0:
+                itr_file.unlink()
+                return False
+            if get_video_codec(itr_file) == "unknown":
+                itr_file.unlink()
+                return False
+            if "unknown" in get_video_pix_format(itr_file).lower():
+                itr_file.unlink()
+                return False
+            itr_file.rename(new_file)
+            return True
+    return False
+
+
+def get_input_file_path(tmp_folder):
+    """get the path to the input file for the next step, this is needed since we do not know the extension of the downloaded file"""
+    for itr_file in tmp_folder.glob("*"):
+        if itr_file.stem.startswith("input"):
             return itr_file
-    return pathlib.Path("")
+    raise RuntimeError(f"could not file the input file for the next step, tmp_folder: {tmp_folder}")
 
 
 def sizeof_fmt(num, suffix="B"):
@@ -288,50 +303,68 @@ def sizeof_fmt(num, suffix="B"):
     return f"{num:.1f} Yi{suffix}"
 
 
-def download_video_audio(in_url, in_t_interval, in_output, in_debug, in_dlp_format):
+def get_video_codec(video_path):
+    if shutil.which("ffprobe") is None:
+        return ""
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)]
+    v_codec = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False).stdout.decode('utf-8').strip(" \n")
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_name", "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)]
+    a_codec = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False).stdout.decode('utf-8').strip(" \n")
+    if v_codec != "" and a_codec != "":
+        return f"(v: {v_codec}, a: {a_codec})"
+    elif v_codec != "":
+        return "v: " + v_codec
+    elif a_codec != "":
+        return "a: " + a_codec
+    return "unknown"
 
-    res_path = in_output
-    if pathlib.Path(in_output).suffix == "":
-        res_path += _GENERIC_EXT
+def get_video_pix_format(video_path):
+    if shutil.which("ffprobe") is None:
+        return ""
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=pix_fmt", "-of", "csv=p=0", str(video_path)]
+    return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False).stdout.decode('utf-8').strip(" \n")
 
-    def set_download_ranges(info_dict, self):
+
+def get_video_length(video_path):
+    if shutil.which("ffprobe") is None:
+        return float('inf')
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)]
+    duration_str = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False).stdout.decode('utf-8').strip(" \n")
+    try:
+        num_float = float(duration_str)
+        return num_float
+    except ValueError:
+        print("WARNING: could not extracting video duration")
+    return float('inf')
+
+
+def download_video_audio(in_url, in_t_interval, in_tmp_folder, in_debug, in_interval_download, in_dlp_format):
+    res_path = in_tmp_folder / ("output" + _GENERIC_EXT)
+
+    def set_download_ranges(_1, _2):
         duration_opt = [{
             'start_time': in_t_interval.start_in_seconds(),
             'end_time': in_t_interval.end_in_seconds()
         }]
         return duration_opt
-
     opts = {
-        "external_downloader": "ffmpeg",
         "force_keyframes_at_cuts": True,
         "writesubtitles": False,
         "writeautomaticsub": False,
         "quiet": not in_debug,
-        "outtmpl": res_path,
+        "outtmpl": str(res_path),
         "format": in_dlp_format,
     }
-    if in_t_interval.provided:
+    if in_t_interval.provided and in_interval_download:
+        opts["external_downloader"]= "ffmpeg"
         opts["download_ranges"] = set_download_ranges
-    print("downloading media ...")
+        opts["force-keyframe-at-cuts"] = True
+        in_t_interval.print_interval_str()
+        print("downloading partial media ...")
+    else:
+        print("downloading full media ...")
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download(in_url)
-        out_path = search_for_output(in_output)
-        if out_path.is_file():
-            return out_path
-
-        opts = {
-            **ydl.params,
-            "external_downloader": "native",
-            "external_downloader_args": {},
-            "writesubtitles": False,
-            # if you also want automatically generated captions/subtitles
-            "writeautomaticsub": False,
-            # so we only get the captions and don't download the (whole) video again
-            "skip_download": True,
-        }
-        ydl.params = opts
-        ydl.download(in_url)
-        return search_for_output(in_output)
 
 
 def get_video_name(vid_info, in_t_interval, in_ext):
@@ -365,17 +398,36 @@ def get_video_name(vid_info, in_t_interval, in_ext):
     if in_t_interval.provided:
         vid_time = f'_{in_t_interval.start.strftime("%Hh%Mm%Ss")}'
 
-    return f"{num}{main_name}{v_id}{vid_time}{in_ext}"
+    return pathlib.Path(f"{num}{main_name}{v_id}{vid_time}{in_ext}")
 
-def merge_video_with_reference_image(tmp_vid_path, tmp_reference_path, output_path, debug):
+def merge_video_with_reference_image(tmp_folder, tmp_reference_path, debug):
+    file_path = get_input_file_path(tmp_folder)
+    output_file = file_path.parent / ("output" + _POST_PROCESSING_VIDEO_EXTENSION)
     log_level = "quiet"
     if debug:
         log_level = "info"
 
-    cmd = f'ffmpeg -y -hide_banner -loglevel {log_level} -i "{str(tmp_vid_path)}" -i "{str(tmp_reference_path)}" '
-    cmd += f'-filter_complex "[0:v][1:v] overlay=0:0" -c:v {_MERGED_VIDEO_CODEC} -c:a copy "{str(output_path)}"'
+    cmd = f'ffmpeg -y -hide_banner -loglevel {log_level} -i "{file_path}" -i "{tmp_reference_path}" '
+    cmd += f'-filter_complex "[0:v][1:v] overlay=0:0" -c:v {_POST_PROCESSING_VIDEO_CODEC} -c:a copy {_POST_PROCESSING_OPTIONS} "{output_file}"'
     # print(cmd)
     os.system(cmd)
+    file_path.unlink(missing_ok=True)
+
+
+def extract_time_interval(tmp_folder, in_t_interval, debug):
+    log_level = "quiet"
+    if debug:
+        log_level = "info"
+    file_path = get_input_file_path(tmp_folder)
+    duration_in_seconds = get_video_length(file_path)
+    if duration_in_seconds < float(in_t_interval.end_in_seconds()):
+        print(f"ERROR: time interval end point '{in_t_interval.end_in_seconds()}s' is bigger then media duration '{duration_in_seconds}s'")
+    output_file = file_path.parent / ("output" + file_path.suffix)
+    cmd = f'ffmpeg -y -hide_banner -loglevel {log_level} -ss {in_t_interval.start_in_seconds()} -to {in_t_interval.end_in_seconds()} '
+    cmd += f'-i {file_path} -acodec copy {output_file}'
+    # print(cmd)
+    os.system(cmd)
+    file_path.unlink(missing_ok=True)
 
 
 def pretty_time_delta(t_delta):
@@ -424,6 +476,80 @@ def parse_color(in_c: str):
     return res[0], res[1], res[2]
 
 
+def download_and_process(args, t_interval, url):
+    ref_color = tuple(parse_color(args.color))
+    if args.audio_only:
+        dlp_format = "bestaudio/best"
+    elif args.video_only:
+        if args.allow_4k:
+            dlp_format = "bestvideo/best"
+        else:
+            dlp_format = "bestvideo[height<=?1080]/best"
+    else:
+        if args.allow_4k:
+            dlp_format = "bestvideo+bestaudio/best"
+        else:
+            dlp_format = "bestvideo[height<=?1080]+bestaudio/best"
+
+    ydl_opts = {"quiet": not args.debug, "simulate": True, "forceurl": True, "format": dlp_format}
+    print("getting video info ...")
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        vid_info_raw = ydl.extract_info(url, download=False)
+        vid_info = ydl.sanitize_info(vid_info_raw)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = pathlib.Path(tmp_dir)
+
+        if t_interval.provided and args.faster_partial:
+            download_video_audio(url, t_interval, tmp_path, args.debug, True, dlp_format)
+            if not check_output(tmp_path):
+                print("failed to download partial media using ffmpeg, attempting to use native downloader")
+                download_video_audio(url, t_interval, tmp_path, args.debug, False, dlp_format)
+                if not check_output(tmp_path):
+                    print("ERROR: failed to download full video using native downloader")
+                    return pathlib.Path("")
+                print("extracting time interval from media ...")
+                extract_time_interval(tmp_path, t_interval, args.debug)
+                if not check_output(tmp_path):
+                    print("ERROR: failed to extract time interval from media")
+                    return pathlib.Path("")
+        else:
+            download_video_audio(url, t_interval, tmp_path, args.debug, False, dlp_format)
+            if not check_output(tmp_path):
+                print("ERROR: failed to download full video using native downloader")
+                return pathlib.Path("")
+            if t_interval.provided:
+                print("extracting time interval from media ...")
+                extract_time_interval(tmp_path, t_interval, args.debug)
+                if not check_output(tmp_path):
+                    print("ERROR: failed to extract time interval from media")
+                    return pathlib.Path("")
+        
+        if args.reference and not args.audio_only:
+            print("creating the reference image ...")
+            ref_painter = TextPainter(vid_info, args.opacity, args.corner, ref_color)
+            img = ref_painter.get_image()
+            img_path = tmp_path / "vid_ref.png"
+            img.save(str(img_path))
+            
+            print("merging video and reference image ...")
+            merge_video_with_reference_image(tmp_path, img_path, args.debug)
+            if not check_output(tmp_path):
+                print("ERROR: failed to merge reference image with video")
+                return pathlib.Path("")
+        
+        input_file = get_input_file_path(tmp_path)
+        extension = input_file.suffix
+        output_path = pathlib.Path(args.output).absolute()
+        if args.output == "":
+            output_path = get_video_name(vid_info, t_interval, extension)
+        elif output_path.suffix != extension:
+            output_path = output_path.parent / (output_path.stem + extension)
+        shutil.move(input_file, output_path)
+
+        return output_path
+            
+
 def main():
     corner_choices = ["top-left", "top-right", "bottom-left", "bottom-right"]
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -445,6 +571,9 @@ def main():
                         type=str2bool, default=ALLOW_4K_VIDEO, metavar='\b')
     parser.add_argument('-r', '--reference', help='add the reference of download source in a video corner',
                         type=str2bool, metavar='\b', default=ADD_REFERENCE)
+    parser.add_argument('-f', '--faster_partial', help='use ffmpeg to speed up downloading video intervals. '
+                                                       'However, this may degrade video quality in some cases',
+                        type=str2bool, metavar='\b', default=FASTER_PARTIAL_DOWNLOAD)
     parser.add_argument('-n', '--corner', help='the corner where to put the reference: ' + str(corner_choices),
                         type=str, choices=corner_choices, metavar='\b', default=REFERENCE_CORNER)
     parser.add_argument('-c', '--color', help='reference text font color (HEX and RGB are accepted)', type=str,  
@@ -461,79 +590,34 @@ def main():
         print("ERROR: 'ffmpeg' is not installed, please install it before use")
         quit()
 
-    t_interval = get_time_interval(args.time_interval)
-
     exec_start_time = datetime.now()
 
     if args.video_only and args.audio_only:
         raise ValueError("ERROR: you chose both 'video_only' and 'audio_only' modes, only one can be chosen")
 
-    extension = ""
-    if args.audio_only:
-        extension = ".mp3"
-        dlp_format = "bestaudio/best"
-    elif args.video_only:
-        extension = ".mp4"
-        if args.allow_4k:
-            dlp_format = "bestvideo/best"
-        else:
-            dlp_format = "bestvideo[height<=?1080]/best"
-    else:
-        if args.allow_4k:
-            dlp_format = "bestvideo+bestaudio/best"
-        else:
-            dlp_format = "bestvideo[height<=?1080]+bestaudio/best"
+    t_interval = TimeInterval(args.time_interval)
 
     url = args.url
-    ref_color = tuple(parse_color(args.color))
+
     if 0.0 > args.opacity or args.opacity > 1.0:
         raise ValueError("Opacity should be between 0 and 1.")
     if len(url) == 0:
         url = get_url_text()
 
-    ydl_opts = {"quiet": not args.debug, "simulate": True, "forceurl": True, "format": dlp_format}
-    print("getting video info ...")
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        vid_info_raw = ydl.extract_info(url, download=False)
-        vid_info = ydl.sanitize_info(vid_info_raw)
+    res_path = download_and_process(args, t_interval, url)
 
-    output_path = args.output
-    if output_path == "":
-        output_path = get_video_name(vid_info, t_interval, extension)
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_path = pathlib.Path(tmp_dir)
-
-        if args.reference and not args.audio_only:
-            tmp_vid = tmp_path / pathlib.Path(output_path).name
-            tmp_res_path = download_video_audio(url, t_interval, str(tmp_vid), args.debug, dlp_format)
-            if not tmp_res_path.is_file():
-                print("ERROR: could not download file: " + str(tmp_res_path))
-
-            print("creating the reference image ...")
-            ref_painter = TextPainter(vid_info, args.opacity, args.corner, ref_color)
-            img = ref_painter.get_image()
-            img_path = tmp_path / "vid_ref.png"
-            img.save(str(img_path))
-            
-            print("merging video and reference image ...")
-            res_path = pathlib.Path(output_path).parent / (pathlib.Path(tmp_res_path).stem + _MERGED_VIDEO_EXTENSION)
-            merge_video_with_reference_image(tmp_res_path, img_path, res_path, args.debug)
-
-        else:
-            res_path = download_video_audio(url, t_interval, output_path, args.debug, dlp_format)
-
-        if not res_path.is_file():
-            print("ERROR: could not download file: " + str(res_path))
-        else:
-            print("")
-            print(f"finished downloading media from: {url}")
-            t_interval.print_interval_str()
-            print("size: " + sizeof_fmt(res_path.stat().st_size))
-            print(f'file path: {res_path}')
-            print("")
-            print("media download finished. Duration = " + pretty_time_delta(datetime.now() - exec_start_time))
-            print("")
+    if not res_path.is_file():
+        print("ERROR: could not download file")
+    else:
+        print("")
+        print(f"finished downloading media from: {url}")
+        t_interval.print_interval_str()
+        print("size: " + sizeof_fmt(res_path.stat().st_size))
+        print(f'file path: {res_path}')
+        print("codec: " + get_video_codec(res_path))
+        print("")
+        print("media download finished. Duration = " + pretty_time_delta(datetime.now() - exec_start_time))
+        print("")
 
     end_print(args.art)
 
